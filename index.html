@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jeu Kevin - Arcade Ultimate Fixed</title>
+    <title>Jeu Kevin - Arcade V3 Fixed</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
     
     <script type="module">
@@ -12,7 +12,7 @@
         from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         // ==================================================================
-        // CLES FIREBASE (Déjà intégrées)
+        // CLES INTEGREES
         // ==================================================================
         const firebaseConfig = {
             apiKey: "AIzaSyDis3uQdBdzfuOnLF2QMfsmuSyFni2LoLU",
@@ -27,46 +27,44 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // Sauvegarder le score (Tout en majuscules pour éviter les doublons)
+        // Sauvegarder (En MAJUSCULES pour uniformiser)
         window.saveScoreOnline = async (name, points) => {
             if(!name || points === 0) return;
-            const cleanName = name.trim().toUpperCase();
             try {
                 await addDoc(collection(db, "scores"), {
-                    name: cleanName,
+                    name: name.trim().toUpperCase(),
                     points: points,
                     date: new Date()
                 });
-            } catch (e) { console.error("Erreur save:", e); }
+            } catch (e) { console.error(e); }
         };
 
-        // Récupérer le meilleur score global (CORRIGÉ : Tri en local)
+        // Récupérer le meilleur score (Sans tri SQL pour éviter les bugs d'index)
         window.fetchUserBestScore = async (name) => {
             if(!name) return 0;
             const cleanName = name.trim().toUpperCase();
             try {
-                // On récupère tous les scores de ce nom sans trier (pour éviter le bug d'index)
+                // On prend tout ce qui correspond au nom
                 const q = query(collection(db, "scores"), where("name", "==", cleanName));
                 const snap = await getDocs(q);
-                
                 if (snap.empty) return 0;
 
-                // On cherche le max manuellement
-                let maxPoints = 0;
+                // On cherche le max nous-même (plus sûr)
+                let max = 0;
                 snap.forEach(doc => {
                     const p = doc.data().points;
-                    if(p > maxPoints) maxPoints = p;
+                    if(p > max) max = p;
                 });
-                return maxPoints;
-            } catch (e) { console.error("Erreur fetch best:", e); return 0; }
+                return max;
+            } catch (e) { console.error("Erreur Best Score:", e); return 0; }
         };
 
-        // Récupérer les records personnels (CORRIGÉ : Tri en local)
+        // Récupérer l'historique personnel (Sans tri SQL pour éviter les bugs)
         window.fetchPersonalRecords = async (name) => {
             const list = document.getElementById('personal-list');
             if(!list || !name) return;
-            list.innerHTML = "<li>Chargement...</li>";
             
+            list.innerHTML = "<li style='justify-content:center; color:#888;'><i>Recherche...</i></li>";
             const cleanName = name.trim().toUpperCase();
 
             try {
@@ -74,33 +72,30 @@
                 const snap = await getDocs(q);
                 
                 if(snap.empty) {
-                    list.innerHTML = "<li style='color:#555; justify-content:center;'>Aucun record</li>";
+                    list.innerHTML = "<li style='justify-content:center; color:#555;'>Aucun record</li>";
                     return;
                 }
 
-                // On convertit en tableau pour trier nous-mêmes
+                // On trie en JavaScript (C'est ce qui corrige le bug)
                 let scores = [];
                 snap.forEach(doc => scores.push(doc.data().points));
-                
-                // Tri décroissant (plus grand au plus petit)
-                scores.sort((a, b) => b - a);
-                // On garde les 10 meilleurs
-                scores = scores.slice(0, 10);
+                scores.sort((a, b) => b - a); // Plus grand au plus petit
+                scores = scores.slice(0, 10); // Top 10
 
                 list.innerHTML = "";
-                scores.forEach((scoreVal, index) => {
+                scores.forEach((s, index) => {
                     const li = document.createElement('li');
-                    li.innerHTML = `<span>#${index+1}</span> <span style="color:#00d4ff">${scoreVal}</span>`;
+                    li.innerHTML = `<span>#${index+1}</span> <span style="color:#00d4ff">${s}</span>`;
                     list.appendChild(li);
                 });
 
             } catch (e) { 
-                console.error("Erreur fetch perso:", e); 
-                list.innerHTML = "<li>Erreur chargement</li>";
+                console.error("Erreur Perso List:", e);
+                list.innerHTML = "<li style='color:red'>Erreur connexion</li>";
             }
         };
 
-        // Classement Global Live (Top 10 Général)
+        // Top 10 Mondial
         const q = query(collection(db, "scores"), orderBy("points", "desc"), limit(10));
         onSnapshot(q, (snapshot) => {
             const list = document.getElementById('score-list');
@@ -115,7 +110,7 @@
                 li.innerHTML = `
                     <div style="display:flex; gap:10px;">
                         <span style="opacity:0.5; width:20px;">#${rank}</span>
-                        <span style="color:${color}; font-weight:bold;">${medal} ${s.name.toUpperCase()}</span>
+                        <span style="color:${color}; font-weight:bold;">${medal} ${s.name}</span>
                     </div>
                     <span style="color:#00d4ff;">${s.points}</span>
                 `;
@@ -161,6 +156,7 @@
 
         .skins-container { display: flex; gap: 20px; flex-grow: 1; justify-content: center; }
         .skin-item { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+        
         .skin-btn {
             width: 40px; height: 40px; border-radius: 50%; border: 3px solid #333;
             cursor: pointer; position: relative; transition: 0.2s;
@@ -168,6 +164,7 @@
         .skin-btn.locked { opacity: 0.3; cursor: not-allowed; border-color: #333; }
         .skin-btn.locked::after { content: '🔒'; position: absolute; top: 8px; left: 8px; font-size: 14px; }
         .skin-btn.selected { border-color: white; transform: scale(1.2); box-shadow: 0 0 15px white; }
+        
         .skin-score-req { font-size: 10px; color: #888; font-weight: bold; }
 
         #encouragement-popup {
@@ -191,7 +188,6 @@
 
         #liveScore { position: absolute; top: 20px; left: 20px; font-size: 32px; font-weight: bold; color: #ffffff40; pointer-events: none; }
         
-        /* Scrollbar custom */
         ul::-webkit-scrollbar { width: 5px; }
         ul::-webkit-scrollbar-thumb { background: #00d4ff; border-radius: 10px; }
         
@@ -208,7 +204,6 @@
         
         <div id="game-column">
             <div id="canvas-wrapper">
-                
                 <div id="encouragement-popup">NOUVEAU RECORD !<br>👑</div>
 
                 <div id="start-screen" class="overlay">
@@ -243,11 +238,9 @@
             <h2 style="color: #ff6b6b; border-color: #ff6b6b33;">MES RECORDS</h2>
             <ul id="personal-list"><li style="color:#555; justify-content: center;">Entre ton pseudo</li></ul>
         </div>
-
     </div>
 
     <script>
-        // --- CONFIGURATION ---
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const skinsContainer = document.getElementById('skinsContainer');
@@ -260,7 +253,7 @@
             { score: 25, color: '#3498db', name: 'BLEU' },
             { score: 50, color: '#ff9ff3', name: 'ROSE' },
             { score: 100, color: '#f1c40f', name: 'JAUNE' },
-            { score: 200, color: 'rainbow', name: 'RAINBOW' }
+            { score: 200, color: 'rainbow', name: 'RAINBOW' } // Rainbow corrigé
         ];
 
         let state = {
@@ -278,7 +271,7 @@
         let paddle = { x: 340, y: 510, width: 120, height: 15 };
         let particles = [];
 
-        // --- GESTION INPUT & CLOUD ---
+        // --- EVENTS ---
         window.addEventListener('mousemove', (e) => {
             if(!state.running) return;
             const rect = canvas.getBoundingClientRect();
@@ -292,6 +285,7 @@
         window.addEventListener('keydown', (e) => { if(e.code === 'Space') state.spacePressed = true; });
         window.addEventListener('keyup', (e) => { if(e.code === 'Space') state.spacePressed = false; });
 
+        // --- LOGIQUE DATA ---
         function initMenu() {
             if(state.pseudo) {
                 nameInput.value = state.pseudo;
@@ -300,23 +294,23 @@
             renderSkins();
         }
 
+        // Déclenché quand on quitte le champ ou appuie sur Entrée
         nameInput.addEventListener('blur', () => {
-             // Sauvegarde en majuscule locale
             state.pseudo = nameInput.value.trim().toUpperCase();
             checkOnlineData();
         });
-        
+
         async function checkOnlineData() {
             const name = nameInput.value.trim().toUpperCase();
             if(!name) return;
             
-            // 1. Meilleur score global
+            // 1. Meilleur score pour les skins
             if(window.fetchUserBestScore) {
                 const onlineBest = await window.fetchUserBestScore(name);
                 if(onlineBest > state.bestScore) state.bestScore = onlineBest;
                 renderSkins();
             }
-            // 2. Records perso
+            // 2. Liste historique perso
             if(window.fetchPersonalRecords) {
                 await window.fetchPersonalRecords(name);
             }
@@ -331,8 +325,12 @@
                 const btn = document.createElement('div');
                 btn.className = 'skin-btn';
                 
-                if(skin.color === 'rainbow') btn.style.background = 'linear-gradient(45deg, red, violet)';
-                else btn.style.background = skin.color;
+                // Correction visuelle du bouton Rainbow
+                if(skin.color === 'rainbow') {
+                    btn.style.background = 'linear-gradient(45deg, red, orange, yellow, green, blue, violet)';
+                } else {
+                    btn.style.background = skin.color;
+                }
 
                 if(state.bestScore < skin.score) {
                     btn.classList.add('locked');
@@ -358,7 +356,7 @@
             renderSkins();
         }
 
-        // --- GAME LOOP ---
+        // --- JEU ---
         async function startGame() {
             const name = nameInput.value.trim().toUpperCase();
             if(!name) { alert("Entre un pseudo !"); return; }
@@ -450,6 +448,7 @@
             ctx.shadowBlur = 0;
         }
 
+        // Correction Rainbow : Retourne une vraie couleur dynamique
         function getCurrentColor() {
             if(state.selectedColor === 'rainbow') return `hsl(${state.hue}, 100%, 50%)`;
             return state.selectedColor;
