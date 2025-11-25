@@ -3,361 +3,500 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jeu Kevin - Version Stable</title>
+    <title>Jeu Kevin - Arcade Edition</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        /* RESET ET BASE */
+        /* --- STYLE GLOBAL --- */
         * { box-sizing: border-box; }
         
         body {
             margin: 0;
-            padding: 20px;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 0;
+            background-color: #050510;
+            background-image: radial-gradient(circle at 50% 50%, #1a1a2e 0%, #000000 100%);
+            font-family: 'Orbitron', sans-serif; /* Police Arcade */
             color: white;
-            min-height: 100vh;
-            text-align: center; /* Centre le texte et les éléments inline */
-        }
-
-        /* CONTENEUR PRINCIPAL */
-        /* On retire le flexbox complexe du body pour éviter le bug d'écran vide */
-        .container {
-            display: inline-block; /* S'adapte au contenu */
-            margin-top: 20px;
-            background: rgba(0, 0, 0, 0.2);
-            padding: 20px;
-            border-radius: 20px;
-        }
-
-        .layout-grid {
+            height: 100vh;
+            overflow: hidden; /* Pas de scroll */
             display: flex;
-            flex-wrap: wrap;
             justify-content: center;
-            gap: 30px;
+            align-items: center;
+        }
+
+        /* --- UI CONTAINER --- */
+        #game-container {
+            position: relative;
+            display: flex;
+            gap: 20px;
             align-items: flex-start;
         }
 
-        /* TITRES ET TEXTES */
-        h1 {
-            color: #00d4ff;
-            text-shadow: 0 0 15px rgba(0, 212, 255, 0.6);
-            margin: 0 0 10px 0;
-            font-size: 42px;
-        }
-
-        .score-display {
-            font-size: 24px;
-            margin-bottom: 15px;
-            color: #ffffff;
-            font-weight: bold;
-        }
-
-        /* CANVAS DE JEU */
-        .game-wrapper {
-            position: relative;
-            border: 4px solid #00d4ff;
-            border-radius: 8px;
-            box-shadow: 0 0 40px rgba(0, 212, 255, 0.2);
-            background-color: #0f0f1e;
-            cursor: none; /* Cache la souris DANS le jeu */
-            margin: 0 auto;
-        }
-
-        canvas {
-            display: block; /* Supprime les marges fantômes */
-        }
-
-        /* OVERLAY GAME OVER */
-        .overlay {
+        /* --- ECRAN D'ACCUEIL (LOGIN) --- */
+        #start-screen {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.85);
-            display: none; /* Caché par défaut */
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(5px);
+            border-radius: 12px;
+        }
+
+        input {
+            padding: 15px;
+            font-size: 18px;
+            border-radius: 5px;
+            border: 2px solid #00d4ff;
+            background: #0f0f1e;
+            color: white;
+            font-family: 'Orbitron', sans-serif;
+            text-align: center;
+            margin-bottom: 20px;
+            width: 250px;
+            outline: none;
+        }
+
+        input:focus { box-shadow: 0 0 15px #00d4ff; }
+
+        /* --- CANVAS (JEU) --- */
+        #canvas-wrapper {
+            position: relative;
+            box-shadow: 0 0 50px rgba(0, 212, 255, 0.15);
+            border-radius: 12px;
+            border: 2px solid #333;
+            background: #000;
+        }
+
+        canvas {
+            display: block;
+            border-radius: 12px;
+            cursor: none; /* Cache le curseur dans le jeu */
+        }
+
+        /* --- TABLEAU DES SCORES --- */
+        #sidebar {
+            width: 280px;
+            background: rgba(20, 20, 35, 0.8);
+            border: 1px solid #00d4ff;
+            border-radius: 12px;
+            padding: 20px;
+            height: 600px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+        }
+
+        h2 {
+            color: #00d4ff;
+            text-align: center;
+            margin-top: 0;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(0, 212, 255, 0.8);
+            font-size: 20px;
+            border-bottom: 2px solid rgba(0, 212, 255, 0.3);
+            padding-bottom: 15px;
+        }
+
+        #score-list {
+            list-style: none;
+            padding: 0;
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+
+        #score-list li {
+            padding: 12px 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            font-size: 14px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        /* Couleurs du podium */
+        #score-list li:nth-child(1) { color: #ffd700; text-shadow: 0 0 5px #ffd700; font-weight: bold; font-size: 16px; }
+        #score-list li:nth-child(2) { color: #c0c0c0; text-shadow: 0 0 5px #c0c0c0; }
+        #score-list li:nth-child(3) { color: #cd7f32; }
+
+        /* --- OVERLAY GAME OVER --- */
+        #game-over-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: none;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             z-index: 10;
-        }
-        
-        .overlay.visible {
-            display: flex;
+            border-radius: 12px;
         }
 
-        .overlay h2 {
-            font-size: 48px;
-            color: #ff6b6b;
-            margin-bottom: 10px;
-        }
-
-        button {
-            background: #00d4ff;
-            border: none;
-            padding: 15px 30px;
+        .btn {
+            padding: 15px 40px;
             font-size: 20px;
-            border-radius: 5px;
+            background: linear-gradient(90deg, #00d4ff, #005bea);
+            border: none;
+            border-radius: 50px;
             cursor: pointer;
             font-weight: bold;
-            color: #000;
-            margin-top: 20px;
-        }
-        
-        button:hover {
-            background: #fff;
-        }
-
-        /* TABLEAU DES SCORES */
-        .leaderboard {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid #00d4ff;
-            border-radius: 10px;
-            padding: 20px;
-            width: 250px;
-            text-align: left;
-            min-height: 300px;
+            color: white;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            font-family: 'Orbitron', sans-serif;
         }
 
-        .leaderboard h3 {
-            color: #ff6b6b;
-            text-align: center;
-            margin-top: 0;
-            border-bottom: 1px solid #555;
-            padding-bottom: 10px;
+        .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.6);
         }
 
-        ul {
-            list-style: none;
-            padding: 0;
-        }
-
-        li {
-            padding: 8px 0;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            display: flex;
-            justify-content: space-between;
+        /* --- RESPONSIVE --- */
+        @media (max-width: 1000px) {
+            #game-container { flex-direction: column; align-items: center; }
+            #sidebar { width: 800px; height: 200px; }
+            canvas { width: 100%; max-width: 800px; }
         }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h1>Jeu Kevin</h1>
+    <div id="game-container">
         
-        <div class="layout-grid">
-            <div class="game-column">
-                <div class="score-display">Score: <span id="scoreEl">0</span></div>
-                
-                <div class="game-wrapper" id="gameWrapper" style="width: 700px; height: 500px;">
-                    <canvas id="gameCanvas" width="700" height="500"></canvas>
-                    
-                    <div class="overlay" id="gameOverScreen">
-                        <h2>PERDU !</h2>
-                        <p style="font-size: 20px;">Score final : <span id="finalScore">0</span></p>
-                        <button onclick="resetGame()">REJOUER</button>
-                    </div>
-                </div>
-                <p style="color: #888; margin-top: 10px; font-size: 14px;">Utilisez la souris pour contrôler la barre bleue.</p>
+        <div id="canvas-wrapper">
+            <div id="start-screen">
+                <h1 style="color:#00d4ff; text-shadow:0 0 20px #00d4ff; font-size:40px; margin-bottom:10px;">JEU KEVIN</h1>
+                <p style="color:#aaa; margin-bottom:30px;">ARCADE EDITION</p>
+                <input type="text" id="playerNameInput" placeholder="ENTREZ VOTRE PSEUDO" maxlength="12">
+                <button class="btn" onclick="startGame()">JOUER</button>
             </div>
 
-            <div class="leaderboard">
-                <h3>Top 10 Scores</h3>
-                <ul id="scoreList">
-                    <li style="text-align:center; color:gray;">Aucun score</li>
-                </ul>
+            <div id="game-over-screen">
+                <h2 style="font-size: 40px; color: #ff6b6b; border:none;">GAME OVER</h2>
+                <p style="font-size: 20px; margin-bottom: 20px;">Score de <span id="finalName" style="color:#00d4ff"></span> : <span id="finalScoreDisplay" style="color:white; font-weight:bold;">0</span></p>
+                <button class="btn" onclick="resetGame()">REJOUER</button>
+            </div>
+
+            <canvas id="gameCanvas" width="800" height="600"></canvas>
+            
+            <div style="position:absolute; top:20px; left:20px; font-size:24px; color:rgba(255,255,255,0.5); pointer-events:none;">
+                SCORE: <span id="liveScore" style="color:#fff">0</span>
             </div>
         </div>
+
+        <div id="sidebar">
+            <h2>MEILLEURS JOUEURS</h2>
+            <ul id="score-list">
+                </ul>
+        </div>
+
     </div>
 
     <script>
         // --- CONFIGURATION ---
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        const overlay = document.getElementById('gameOverScreen');
-        const scoreEl = document.getElementById('scoreEl');
-        const finalScoreEl = document.getElementById('finalScore');
-        const scoreListEl = document.getElementById('scoreList');
-
-        // Dimensions
-        const width = canvas.width;
-        const height = canvas.height;
-
-        // Paramètres Jeu
-        const paddleWidth = 150;
-        const paddleHeight = 15;
-        const ballRadius = 10;
-        const maxSpeed = 14; // Vitesse humaine limite
         
-        // Variables d'état
-        let gameRunning = true;
+        // Eléments DOM
+        const startScreen = document.getElementById('start-screen');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const nameInput = document.getElementById('playerNameInput');
+        const liveScoreEl = document.getElementById('liveScore');
+        const scoreListEl = document.getElementById('score-list');
+        const finalNameEl = document.getElementById('finalName');
+        const finalScoreEl = document.getElementById('finalScoreDisplay');
+
+        // Variables de Jeu
+        let gameRunning = false;
         let score = 0;
+        let playerName = "Anonyme";
+        let animationId;
         
-        // Objets
-        let ball = { x: 350, y: 250, dx: 5, dy: 5 };
-        let paddle = { x: 275, y: height - 30 };
+        // Particules (Explosions)
+        let particles = [];
 
+        // Paramètres
+        const PADDLE_WIDTH = 120;
+        const PADDLE_HEIGHT = 15;
+        const BALL_RADIUS = 8;
+        const MAX_SPEED = 16;
+
+        // Objets
+        let ball = { x: 400, y: 300, dx: 0, dy: 0, speed: 5, color: '#ff6b6b' };
+        let paddle = { x: 340, y: 560, color: '#00d4ff' };
+
+        // --- GESTION DES PARTICULES ---
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.size = Math.random() * 3 + 1;
+                this.speedX = (Math.random() - 0.5) * 6;
+                this.speedY = (Math.random() - 0.5) * 6;
+                this.color = color;
+                this.life = 1.0; // Opacité
+            }
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                this.life -= 0.03;
+            }
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.globalAlpha = this.life;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI*2);
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+            }
+        }
+
+        function createExplosion(x, y, color) {
+            for(let i=0; i<15; i++) {
+                particles.push(new Particle(x, y, color));
+            }
+        }
+
+        // --- MOTEUR DE JEU ---
+        
         // Souris
-        // On écoute la souris sur tout le wrapper pour ne pas perdre le focus
-        document.getElementById('gameWrapper').addEventListener('mousemove', (e) => {
+        canvas.addEventListener('mousemove', (e) => {
             const rect = canvas.getBoundingClientRect();
             let mouseX = e.clientX - rect.left;
             
-            // Centrer la raquette
-            paddle.x = mouseX - (paddleWidth / 2);
+            // Calcul du ratio pour l'affichage responsive
+            const scaleX = canvas.width / rect.width;
+            mouseX *= scaleX;
+
+            paddle.x = mouseX - (PADDLE_WIDTH / 2);
 
             // Bloquer aux murs
             if (paddle.x < 0) paddle.x = 0;
-            if (paddle.x > width - paddleWidth) paddle.x = width - paddleWidth;
+            if (paddle.x > canvas.width - PADDLE_WIDTH) paddle.x = canvas.width - PADDLE_WIDTH;
         });
 
-        function update() {
-            if (!gameRunning) return;
+        function startGame() {
+            const name = nameInput.value.trim();
+            if(name) {
+                playerName = name;
+                // Nettoyer input pour la prochaine fois
+                localStorage.setItem('last_player_name', name); 
+            } else {
+                playerName = "Anonyme";
+            }
+            
+            startScreen.style.display = 'none';
+            resetGameLogic();
+        }
 
-            // Déplacement Balle
+        function resetGameLogic() {
+            gameRunning = true;
+            score = 0;
+            liveScoreEl.innerText = '0';
+            gameOverScreen.style.display = 'none';
+            canvas.style.cursor = 'none';
+
+            // Reset Balle
+            ball.x = canvas.width / 2;
+            ball.y = canvas.height / 3;
+            ball.speed = 6;
+            // Angle de départ aléatoire mais vers le bas
+            let angle = Math.random() * Math.PI / 2 + Math.PI / 4; // Entre 45 et 135 deg
+            ball.dx = Math.cos(angle) * ball.speed;
+            ball.dy = Math.sin(angle) * ball.speed;
+            
+            // Si elle part vers le haut, on inverse
+            if(ball.dy < 0) ball.dy = -ball.dy; 
+
+            particles = []; // Vider les particules
+            gameLoop();
+        }
+        
+        // Bouton Rejouer
+        function resetGame() {
+            resetGameLogic();
+        }
+
+        function update() {
+            if(!gameRunning) return;
+
+            // Bouger particules
+            for(let i = particles.length - 1; i >= 0; i--) {
+                particles[i].update();
+                if(particles[i].life <= 0) particles.splice(i, 1);
+            }
+
+            // Bouger balle
             ball.x += ball.dx;
             ball.y += ball.dy;
 
-            // --- REBONDS MURS (Anti-Bloquage) ---
-            
-            // Mur Gauche
-            if (ball.x - ballRadius < 0) {
-                ball.x = ballRadius; // On replace la balle pour être sûr
-                ball.dx = Math.abs(ball.dx); // Force vers la droite
+            // --- COLLISIONS MURS ---
+            if(ball.x - BALL_RADIUS < 0) { // Gauche
+                ball.x = BALL_RADIUS;
+                ball.dx *= -1;
+                createExplosion(ball.x, ball.y, '#fff');
             }
-            // Mur Droit
-            if (ball.x + ballRadius > width) {
-                ball.x = width - ballRadius;
-                ball.dx = -Math.abs(ball.dx); // Force vers la gauche
+            if(ball.x + BALL_RADIUS > canvas.width) { // Droite
+                ball.x = canvas.width - BALL_RADIUS;
+                ball.dx *= -1;
+                createExplosion(ball.x, ball.y, '#fff');
             }
-            // Mur Haut
-            if (ball.y - ballRadius < 0) {
-                ball.y = ballRadius;
-                ball.dy = Math.abs(ball.dy); // Force vers le bas
+            if(ball.y - BALL_RADIUS < 0) { // Haut
+                ball.y = BALL_RADIUS;
+                ball.dy *= -1;
+                createExplosion(ball.x, ball.y, '#fff');
             }
 
-            // --- COLLISION RAQUETTE ---
-            // On vérifie si la balle est au niveau de la raquette
-            if (ball.y + ballRadius > paddle.y && 
-                ball.y - ballRadius < paddle.y + paddleHeight &&
-                ball.dx !== 0) {
-                
-                // Vérification Horizontale
-                if (ball.x > paddle.x && ball.x < paddle.x + paddleWidth) {
+            // --- COLLISION RAQUETTE (Cercle vs Rectangle) ---
+            // Trouver le point du rectangle le plus proche du centre du cercle
+            let closestX = Math.max(paddle.x, Math.min(ball.x, paddle.x + PADDLE_WIDTH));
+            let closestY = Math.max(paddle.y, Math.min(ball.y, paddle.y + PADDLE_HEIGHT));
+
+            let distanceX = ball.x - closestX;
+            let distanceY = ball.y - closestY;
+            let distanceSquared = (distanceX * distanceX) + (distanceY * distanceY);
+
+            // Si collision détectée
+            if(distanceSquared < (BALL_RADIUS * BALL_RADIUS)) {
+                // Vérifier qu'on tape bien par le haut (pour éviter les bugs si la raquette traverse la balle)
+                if(ball.y < paddle.y + (PADDLE_HEIGHT/2) && ball.dy > 0) {
                     
-                    // On fait rebondir seulement si elle descend
-                    if (ball.dy > 0) {
-                        ball.y = paddle.y - ballRadius; // Replacement strict
-                        ball.dy = -Math.abs(ball.dy);   // Force vers le haut
-                        
-                        // Augmenter score
-                        score++;
-                        scoreEl.innerText = score;
+                    // Calcul précis du point de rebond
+                    let hitPoint = (ball.x - (paddle.x + PADDLE_WIDTH / 2)) / (PADDLE_WIDTH / 2);
+                    
+                    // Augmenter vitesse
+                    if(ball.speed < MAX_SPEED) ball.speed += 0.5;
+                    
+                    // Nouvel angle basé sur l'impact (-1 à gauche, +1 à droite)
+                    // Max angle = 60 degrés (PI/3)
+                    let bounceAngle = hitPoint * (Math.PI / 3);
+                    
+                    ball.dx = ball.speed * Math.sin(bounceAngle);
+                    ball.dy = -ball.speed * Math.cos(bounceAngle);
 
-                        // Accélération légère
-                        if (Math.abs(ball.dx) < maxSpeed) ball.dx *= 1.05;
-                        if (Math.abs(ball.dy) < maxSpeed) ball.dy *= 1.05;
-
-                        // Effet d'angle selon point d'impact
-                        let hitPoint = ball.x - (paddle.x + paddleWidth/2);
-                        // hitPoint est entre -75 et 75. On divise pour avoir un facteur
-                        ball.dx = hitPoint * 0.15; 
-                    }
+                    score++;
+                    liveScoreEl.innerText = score;
+                    
+                    // Effets visuels
+                    createExplosion(ball.x, paddle.y, '#00d4ff');
                 }
             }
 
-            // --- PERDU ---
-            if (ball.y - ballRadius > height) {
-                gameOver();
+            // --- GAME OVER ---
+            if(ball.y - BALL_RADIUS > canvas.height) {
+                endGame();
             }
         }
 
         function draw() {
-            // Effacer le canvas
-            ctx.fillStyle = '#0f0f1e';
-            ctx.fillRect(0, 0, width, height);
+            // Effacer avec de la transparence pour créer l'effet de TRAINÉE
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.25)'; 
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Dessiner Raquette
-            ctx.fillStyle = '#00d4ff';
-            ctx.shadowColor = '#00d4ff';
-            ctx.shadowBlur = 15;
-            ctx.beginPath();
-            ctx.roundRect(paddle.x, paddle.y, paddleWidth, paddleHeight, 8);
-            ctx.fill();
+            // Dessiner Particules
+            particles.forEach(p => p.draw());
 
-            // Dessiner Balle
-            ctx.fillStyle = '#ff6b6b';
-            ctx.shadowColor = '#ff6b6b';
-            ctx.shadowBlur = 15;
-            ctx.beginPath();
-            ctx.arc(ball.x, ball.y, ballRadius, 0, Math.PI * 2);
-            ctx.fill();
+            // Dessiner Raquette (avec effet Glow)
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = paddle.color;
+            ctx.fillStyle = paddle.color;
+            ctx.fillRect(paddle.x, paddle.y, PADDLE_WIDTH, PADDLE_HEIGHT);
             
-            // Reset Shadow pour performance
+            // Barres décoratives sur la raquette
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(paddle.x + 10, paddle.y + 4, PADDLE_WIDTH - 20, 2);
+
+            // Dessiner Balle (avec effet Glow)
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = ball.color;
+            ctx.fillStyle = ball.color;
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, BALL_RADIUS, 0, Math.PI*2);
+            ctx.fill();
+
+            // Reset Glow
             ctx.shadowBlur = 0;
         }
 
-        function loop() {
+        function gameLoop() {
+            if(!gameRunning) return;
             update();
             draw();
-            if (gameRunning) requestAnimationFrame(loop);
+            requestAnimationFrame(gameLoop);
         }
 
-        function gameOver() {
+        function endGame() {
             gameRunning = false;
-            overlay.classList.add('visible');
+            finalNameEl.innerText = playerName;
             finalScoreEl.innerText = score;
-            saveScore(score);
-            // Réafficher le curseur
-            document.getElementById('gameWrapper').style.cursor = 'default';
+            gameOverScreen.style.display = 'flex';
+            canvas.style.cursor = 'default';
+            
+            saveScore(playerName, score);
         }
 
-        function resetGame() {
-            gameRunning = true;
-            score = 0;
-            scoreEl.innerText = '0';
-            overlay.classList.remove('visible');
+        // --- SYSTEME DE LEADERBOARD ---
+        function saveScore(name, points) {
+            if(points === 0) return;
+
+            let scores = JSON.parse(localStorage.getItem('arcade_scores')) || [];
             
-            // Reset positions
-            ball.x = width / 2;
-            ball.y = height / 3;
-            ball.dy = 5;
-            // Direction aléatoire au départ
-            ball.dx = (Math.random() > 0.5 ? 1 : -1) * 4;
+            // Ajouter nouveau score
+            scores.push({ name: name, points: points, date: new Date().toLocaleDateString() });
             
-            // Cacher curseur
-            document.getElementById('gameWrapper').style.cursor = 'none';
+            // Trier (Décroissant)
+            scores.sort((a, b) => b.points - a.points);
             
-            loop();
+            // Garder Top 20
+            scores = scores.slice(0, 20);
+            
+            localStorage.setItem('arcade_scores', JSON.stringify(scores));
+            displayLeaderboard();
         }
 
-        // --- GESTION SCORES ---
-        function saveScore(s) {
-            if (s === 0) return;
-            let list = JSON.parse(localStorage.getItem('kevin_scores_v2')) || [];
-            list.push(s);
-            list.sort((a,b) => b-a);
-            list = list.slice(0, 10);
-            localStorage.setItem('kevin_scores_v2', JSON.stringify(list));
-            displayScores();
-        }
-
-        function displayScores() {
-            let list = JSON.parse(localStorage.getItem('kevin_scores_v2')) || [];
+        function displayLeaderboard() {
+            let scores = JSON.parse(localStorage.getItem('arcade_scores')) || [];
             scoreListEl.innerHTML = '';
-            if (list.length === 0) {
-                scoreListEl.innerHTML = '<li style="text-align:center; color:gray;">Aucun score</li>';
+
+            if(scores.length === 0) {
+                scoreListEl.innerHTML = '<li style="justify-content:center; color:#555">Aucun score enregistré</li>';
                 return;
             }
-            list.forEach((s, i) => {
+
+            scores.forEach((s, index) => {
                 let li = document.createElement('li');
-                li.innerHTML = `<span>#${i+1}</span> <span style="color:#00d4ff; font-weight:bold;">${s}</span>`;
+                // Format: #1  KEVIN  .........  450
+                li.innerHTML = `
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <span style="opacity:0.5; width:20px;">#${index+1}</span>
+                        <span style="font-weight:bold; color:white;">${s.name.toUpperCase()}</span>
+                    </div>
+                    <span style="color:#00d4ff; font-weight:bold;">${s.points} PTS</span>
+                `;
                 scoreListEl.appendChild(li);
             });
         }
 
-        // Démarrage
-        displayScores();
-        resetGame();
+        // --- INIT ---
+        // Pré-remplir le nom si déjà joué
+        if(localStorage.getItem('last_player_name')) {
+            nameInput.value = localStorage.getItem('last_player_name');
+        }
+        
+        displayLeaderboard();
+        // Dessiner une frame initiale pour que ce ne soit pas vide derrière le menu
+        resetGameLogic();
+        gameRunning = false; // Stop immédiat
+        draw(); 
 
     </script>
 </body>
