@@ -49,3 +49,316 @@
             margin-bottom: 15px;
             color: #ffffff;
             font-weight: bold;
+        }
+
+        /* CANVAS DE JEU */
+        .game-wrapper {
+            position: relative;
+            border: 4px solid #00d4ff;
+            border-radius: 8px;
+            box-shadow: 0 0 40px rgba(0, 212, 255, 0.2);
+            background-color: #0f0f1e;
+            cursor: none; /* Cache la souris DANS le jeu */
+            margin: 0 auto;
+        }
+
+        canvas {
+            display: block; /* Supprime les marges fantômes */
+        }
+
+        /* OVERLAY GAME OVER */
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: none; /* Caché par défaut */
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+        
+        .overlay.visible {
+            display: flex;
+        }
+
+        .overlay h2 {
+            font-size: 48px;
+            color: #ff6b6b;
+            margin-bottom: 10px;
+        }
+
+        button {
+            background: #00d4ff;
+            border: none;
+            padding: 15px 30px;
+            font-size: 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            color: #000;
+            margin-top: 20px;
+        }
+        
+        button:hover {
+            background: #fff;
+        }
+
+        /* TABLEAU DES SCORES */
+        .leaderboard {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid #00d4ff;
+            border-radius: 10px;
+            padding: 20px;
+            width: 250px;
+            text-align: left;
+            min-height: 300px;
+        }
+
+        .leaderboard h3 {
+            color: #ff6b6b;
+            text-align: center;
+            margin-top: 0;
+            border-bottom: 1px solid #555;
+            padding-bottom: 10px;
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        li {
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            justify-content: space-between;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Jeu Kevin</h1>
+        
+        <div class="layout-grid">
+            <div class="game-column">
+                <div class="score-display">Score: <span id="scoreEl">0</span></div>
+                
+                <div class="game-wrapper" id="gameWrapper" style="width: 700px; height: 500px;">
+                    <canvas id="gameCanvas" width="700" height="500"></canvas>
+                    
+                    <div class="overlay" id="gameOverScreen">
+                        <h2>PERDU !</h2>
+                        <p style="font-size: 20px;">Score final : <span id="finalScore">0</span></p>
+                        <button onclick="resetGame()">REJOUER</button>
+                    </div>
+                </div>
+                <p style="color: #888; margin-top: 10px; font-size: 14px;">Utilisez la souris pour contrôler la barre bleue.</p>
+            </div>
+
+            <div class="leaderboard">
+                <h3>Top 10 Scores</h3>
+                <ul id="scoreList">
+                    <li style="text-align:center; color:gray;">Aucun score</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- CONFIGURATION ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const overlay = document.getElementById('gameOverScreen');
+        const scoreEl = document.getElementById('scoreEl');
+        const finalScoreEl = document.getElementById('finalScore');
+        const scoreListEl = document.getElementById('scoreList');
+
+        // Dimensions
+        const width = canvas.width;
+        const height = canvas.height;
+
+        // Paramètres Jeu
+        const paddleWidth = 150;
+        const paddleHeight = 15;
+        const ballRadius = 10;
+        const maxSpeed = 14; // Vitesse humaine limite
+        
+        // Variables d'état
+        let gameRunning = true;
+        let score = 0;
+        
+        // Objets
+        let ball = { x: 350, y: 250, dx: 5, dy: 5 };
+        let paddle = { x: 275, y: height - 30 };
+
+        // Souris
+        // On écoute la souris sur tout le wrapper pour ne pas perdre le focus
+        document.getElementById('gameWrapper').addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            let mouseX = e.clientX - rect.left;
+            
+            // Centrer la raquette
+            paddle.x = mouseX - (paddleWidth / 2);
+
+            // Bloquer aux murs
+            if (paddle.x < 0) paddle.x = 0;
+            if (paddle.x > width - paddleWidth) paddle.x = width - paddleWidth;
+        });
+
+        function update() {
+            if (!gameRunning) return;
+
+            // Déplacement Balle
+            ball.x += ball.dx;
+            ball.y += ball.dy;
+
+            // --- REBONDS MURS (Anti-Bloquage) ---
+            
+            // Mur Gauche
+            if (ball.x - ballRadius < 0) {
+                ball.x = ballRadius; // On replace la balle pour être sûr
+                ball.dx = Math.abs(ball.dx); // Force vers la droite
+            }
+            // Mur Droit
+            if (ball.x + ballRadius > width) {
+                ball.x = width - ballRadius;
+                ball.dx = -Math.abs(ball.dx); // Force vers la gauche
+            }
+            // Mur Haut
+            if (ball.y - ballRadius < 0) {
+                ball.y = ballRadius;
+                ball.dy = Math.abs(ball.dy); // Force vers le bas
+            }
+
+            // --- COLLISION RAQUETTE ---
+            // On vérifie si la balle est au niveau de la raquette
+            if (ball.y + ballRadius > paddle.y && 
+                ball.y - ballRadius < paddle.y + paddleHeight &&
+                ball.dx !== 0) {
+                
+                // Vérification Horizontale
+                if (ball.x > paddle.x && ball.x < paddle.x + paddleWidth) {
+                    
+                    // On fait rebondir seulement si elle descend
+                    if (ball.dy > 0) {
+                        ball.y = paddle.y - ballRadius; // Replacement strict
+                        ball.dy = -Math.abs(ball.dy);   // Force vers le haut
+                        
+                        // Augmenter score
+                        score++;
+                        scoreEl.innerText = score;
+
+                        // Accélération légère
+                        if (Math.abs(ball.dx) < maxSpeed) ball.dx *= 1.05;
+                        if (Math.abs(ball.dy) < maxSpeed) ball.dy *= 1.05;
+
+                        // Effet d'angle selon point d'impact
+                        let hitPoint = ball.x - (paddle.x + paddleWidth/2);
+                        // hitPoint est entre -75 et 75. On divise pour avoir un facteur
+                        ball.dx = hitPoint * 0.15; 
+                    }
+                }
+            }
+
+            // --- PERDU ---
+            if (ball.y - ballRadius > height) {
+                gameOver();
+            }
+        }
+
+        function draw() {
+            // Effacer le canvas
+            ctx.fillStyle = '#0f0f1e';
+            ctx.fillRect(0, 0, width, height);
+
+            // Dessiner Raquette
+            ctx.fillStyle = '#00d4ff';
+            ctx.shadowColor = '#00d4ff';
+            ctx.shadowBlur = 15;
+            ctx.beginPath();
+            ctx.roundRect(paddle.x, paddle.y, paddleWidth, paddleHeight, 8);
+            ctx.fill();
+
+            // Dessiner Balle
+            ctx.fillStyle = '#ff6b6b';
+            ctx.shadowColor = '#ff6b6b';
+            ctx.shadowBlur = 15;
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ballRadius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Reset Shadow pour performance
+            ctx.shadowBlur = 0;
+        }
+
+        function loop() {
+            update();
+            draw();
+            if (gameRunning) requestAnimationFrame(loop);
+        }
+
+        function gameOver() {
+            gameRunning = false;
+            overlay.classList.add('visible');
+            finalScoreEl.innerText = score;
+            saveScore(score);
+            // Réafficher le curseur
+            document.getElementById('gameWrapper').style.cursor = 'default';
+        }
+
+        function resetGame() {
+            gameRunning = true;
+            score = 0;
+            scoreEl.innerText = '0';
+            overlay.classList.remove('visible');
+            
+            // Reset positions
+            ball.x = width / 2;
+            ball.y = height / 3;
+            ball.dy = 5;
+            // Direction aléatoire au départ
+            ball.dx = (Math.random() > 0.5 ? 1 : -1) * 4;
+            
+            // Cacher curseur
+            document.getElementById('gameWrapper').style.cursor = 'none';
+            
+            loop();
+        }
+
+        // --- GESTION SCORES ---
+        function saveScore(s) {
+            if (s === 0) return;
+            let list = JSON.parse(localStorage.getItem('kevin_scores_v2')) || [];
+            list.push(s);
+            list.sort((a,b) => b-a);
+            list = list.slice(0, 10);
+            localStorage.setItem('kevin_scores_v2', JSON.stringify(list));
+            displayScores();
+        }
+
+        function displayScores() {
+            let list = JSON.parse(localStorage.getItem('kevin_scores_v2')) || [];
+            scoreListEl.innerHTML = '';
+            if (list.length === 0) {
+                scoreListEl.innerHTML = '<li style="text-align:center; color:gray;">Aucun score</li>';
+                return;
+            }
+            list.forEach((s, i) => {
+                let li = document.createElement('li');
+                li.innerHTML = `<span>#${i+1}</span> <span style="color:#00d4ff; font-weight:bold;">${s}</span>`;
+                scoreListEl.appendChild(li);
+            });
+        }
+
+        // Démarrage
+        displayScores();
+        resetGame();
+
+    </script>
+</body>
+</html>
