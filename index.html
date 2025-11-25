@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jeu Kevin - Arcade V9 Ultimate</title>
+    <title>Jeu Kevin - Arcade V10 Ultimate</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
     
     <script type="module">
@@ -11,6 +11,7 @@
         import { getFirestore, collection, addDoc, setDoc, doc, getDoc, query, orderBy, limit, onSnapshot, where, getDocs } 
         from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
+        // TES CLES SONT ICI :
         const firebaseConfig = {
             apiKey: "AIzaSyDis3uQdBdzfuOnLF2QMfsmuSyFni2LoLU",
             authDomain: "kevin-arcade.firebaseapp.com",
@@ -24,30 +25,32 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // --- SAUVEGARDE SECURISEE (Anti-Quota) ---
+        // --- SAUVEGARDE (Double écriture : Historique + Top 10 Unique) ---
         let lastSaveTime = 0;
 
         window.saveScoreOnline = async (name, points) => {
             if(!name || points === 0) return;
+            
+            // Anti-Spam (1 save toutes les 2 sec max)
             const now = Date.now();
-            // Anti-Spam : 1 sauvegarde max toutes les 5 sec
-            if(now - lastSaveTime < 5000) return; 
+            if(now - lastSaveTime < 2000) return; 
             lastSaveTime = now;
 
             const cleanName = name.trim().toUpperCase();
 
             try {
-                // 1. Historique
+                // 1. Ajout à l'historique global (Pour "Dernières parties" et "Mes Records")
                 await addDoc(collection(db, "history"), {
                     name: cleanName,
                     points: points,
                     date: now
                 });
 
-                // 2. Best Score Unique
+                // 2. Mise à jour du Meilleur Score Unique (Pour "Top 10 Monde")
                 const userRef = doc(db, "best_scores", cleanName);
                 const userSnap = await getDoc(userRef);
 
+                // On ne met à jour que si le nouveau score est meilleur ou n'existe pas
                 if (!userSnap.exists() || points > userSnap.data().points) {
                     await setDoc(userRef, {
                         name: cleanName,
@@ -55,10 +58,10 @@
                         date: now
                     });
                 }
-            } catch (e) { console.error("Quota atteint (Sauvegarde locale ok)", e); }
+            } catch (e) { console.error("Erreur ou Quota:", e); }
         };
 
-        // Récupérer le meilleur score
+        // Récupérer le meilleur score du joueur (Pour débloquer les skins)
         window.fetchUserBestScore = async (name) => {
             if(!name) return 0;
             const cleanName = name.trim().toUpperCase();
@@ -70,14 +73,16 @@
             return 0;
         };
 
-        // Récupérer historique perso
+        // Récupérer "Mes Records" (Top 10 Perso depuis l'historique)
         window.fetchPersonalRecords = async (name) => {
             const list = document.getElementById('personal-list');
             if(!list || !name) return;
+            
             list.innerHTML = "<li style='justify-content:center; color:#888;'><i>Chargement...</i></li>";
             const cleanName = name.trim().toUpperCase();
 
             try {
+                // On récupère tout l'historique de ce joueur
                 const q = query(collection(db, "history"), where("name", "==", cleanName));
                 const snap = await getDocs(q);
                 
@@ -86,10 +91,11 @@
                     return;
                 }
 
+                // On trie en JavaScript (pour éviter les bugs d'index Firebase)
                 let scores = [];
                 snap.forEach(doc => scores.push(doc.data().points));
-                scores.sort((a, b) => b - a);
-                scores = scores.slice(0, 10);
+                scores.sort((a, b) => b - a); // Plus grand au plus petit
+                scores = scores.slice(0, 10); // On garde les 10 meilleurs
 
                 list.innerHTML = "";
                 scores.forEach((s, index) => {
@@ -97,10 +103,12 @@
                     li.innerHTML = `<span>#${index+1}</span> <span style="color:#00d4ff">${s}</span>`;
                     list.appendChild(li);
                 });
-            } catch (e) { list.innerHTML = "<li style='color:#ff4757; font-size:10px; text-align:center;'>Quota dépassé</li>"; }
+            } catch (e) { list.innerHTML = "<li style='color:red; font-size:10px'>Erreur connexion</li>"; }
         };
 
-        // LIVE: Top 10
+        // --- LISTENERS LIVE ---
+
+        // 1. Top 10 Monde (Basé sur "best_scores", donc UNIQUE par joueur)
         const qTop = query(collection(db, "best_scores"), orderBy("points", "desc"), limit(10));
         onSnapshot(qTop, (snapshot) => {
             const list = document.getElementById('score-list');
@@ -124,7 +132,7 @@
             });
         });
 
-        // LIVE: Recent
+        // 2. 5 Dernières Parties (Basé sur "history" par date)
         const qRecent = query(collection(db, "history"), orderBy("date", "desc"), limit(5));
         onSnapshot(qRecent, (snapshot) => {
             const list = document.getElementById('recent-list');
@@ -163,18 +171,18 @@
 
         /* Footer Défilant */
         .footer-scroll {
-            position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(0,0,0,0.8);
+            position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(0,0,0,0.9);
             border-top: 1px solid #333; height: 30px; overflow: hidden; white-space: nowrap;
-            display: flex; align-items: center;
+            display: flex; align-items: center; z-index: 100;
         }
         .scrolling-text {
-            animation: scroll 15s linear infinite;
-            color: #00d4ff; font-size: 14px; letter-spacing: 2px; text-transform: uppercase;
+            animation: scroll 20s linear infinite;
+            color: #00d4ff; font-size: 12px; letter-spacing: 2px; text-transform: uppercase;
             padding-left: 100%;
         }
         @keyframes scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
 
-        /* Sidebar */
+        /* Sidebars */
         .sidebar-column { width: 260px; height: 635px; display: flex; flex-direction: column; gap: 15px; }
         .sidebar-box {
             background: rgba(15, 15, 25, 0.9); border: 1px solid #00d4ff; border-radius: 12px; padding: 15px;
@@ -191,16 +199,17 @@
         li { padding: 8px; border-bottom: 1px solid #ffffff10; display: flex; justify-content: space-between; font-size: 13px; align-items: center; }
         ul::-webkit-scrollbar { width: 4px; } ul::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
 
-        /* Skins Panel Double */
+        /* Skins Panel */
         #skins-panel {
             width: 800px; padding: 10px 20px; background: rgba(15, 15, 25, 0.8);
             border: 1px solid #333; border-radius: 12px;
             display: flex; flex-direction: column; gap: 10px;
         }
         .skins-row { display: flex; align-items: center; gap: 15px; }
-        .skins-label { width: 80px; font-size: 12px; color: #888; text-align: right; margin-right: 10px; }
-        .skins-container { display: flex; gap: 15px; }
+        .skins-label { width: 60px; font-size: 12px; color: #888; text-align: right; margin-right: 10px; font-weight: bold; }
+        .skins-container { display: flex; gap: 20px; }
         
+        .skin-wrapper { position: relative; display: flex; flex-direction: column; align-items: center; }
         .skin-btn {
             width: 35px; height: 35px; border-radius: 50%; border: 2px solid #333;
             cursor: pointer; position: relative; transition: 0.2s;
@@ -208,8 +217,9 @@
         .skin-btn.locked { opacity: 0.3; cursor: not-allowed; }
         .skin-btn.locked::after { content: '🔒'; position: absolute; top: 6px; left: 8px; font-size: 12px; color: white; }
         .skin-btn.selected { border-color: white; transform: scale(1.2); box-shadow: 0 0 10px white; }
-        .skin-score-req { position:absolute; bottom:-15px; left:0; width:100%; text-align:center; font-size: 8px; color: #666; }
+        .skin-req { font-size: 9px; color: #666; margin-top: 4px; font-family: monospace; }
 
+        /* Popups */
         #encouragement-popup {
             position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%);
             font-size: 40px; font-weight: bold; color: #ffd700; text-shadow: 0 0 30px #ffd700;
@@ -228,7 +238,7 @@
         #liveScore { position: absolute; top: 20px; left: 20px; font-size: 32px; font-weight: bold; color: #ffffff40; pointer-events: none; }
         
         @media (max-width: 1400px) {
-            #main-layout { flex-wrap: wrap; height: auto; margin-bottom: 50px; }
+            #main-layout { flex-wrap: wrap; height: auto; margin-bottom: 60px; }
             .sidebar-column { width: 45%; height: 400px; order: 2; }
             #game-column { width: 100%; align-items: center; order: 1; }
             #canvas-wrapper, #skins-panel { width: 100%; max-width: 800px; }
@@ -245,7 +255,7 @@
 
                 <div id="start-screen" class="overlay">
                     <h1 style="color:#00d4ff; text-shadow:0 0 20px #00d4ff; margin-bottom: 5px;">JEU KEVIN</h1>
-                    <p style="color:#888; font-size: 12px; margin-bottom: 30px;">ULTIMATE V9</p>
+                    <p style="color:#888; font-size: 12px; margin-bottom: 30px;">ULTIMATE V10</p>
                     <input type="text" id="playerNameInput" placeholder="PSEUDO" maxlength="12">
                     <button class="btn" onclick="startGame()">JOUER</button>
                 </div>
@@ -266,7 +276,7 @@
                     <div class="skins-container" id="ballSkinsContainer"></div>
                 </div>
                 <div class="skins-row">
-                    <div class="skins-label">BARRE</div>
+                    <div class="skins-label">RAQUETTE</div>
                     <div class="skins-container" id="paddleSkinsContainer"></div>
                 </div>
             </div>
@@ -292,7 +302,7 @@
     </div>
 
     <div class="footer-scroll">
-        <div class="scrolling-text">Jeu proposé par Kevin Couëdro  •  Jeu proposé par Kevin Couëdro  •  Jeu proposé par Kevin Couëdro  •  Jeu proposé par Kevin Couëdro</div>
+        <div class="scrolling-text">Jeu proposé par Kevin Couëdro  •  Jeu proposé par Kevin Couëdro  •  Jeu proposé par Kevin Couëdro  •  Jeu proposé par Kevin Couëdro  •  Jeu proposé par Kevin Couëdro</div>
     </div>
 
     <script>
@@ -301,7 +311,7 @@
         const nameInput = document.getElementById('playerNameInput');
         const popup = document.getElementById('encouragement-popup');
 
-        // --- DONNEES SKINS ---
+        // --- DONNEES SKINS (Modifiables ici) ---
         const BALL_SKINS = [
             { score: 0, color: '#ff6b6b', name: 'ROUGE' },
             { score: 10, color: '#2ecc71', name: 'VERT' },
@@ -316,7 +326,7 @@
             { score: 10, color: '#2ecc71', name: 'VERT' },
             { score: 25, color: '#9b59b6', name: 'VIOLET' },
             { score: 50, color: '#ffffff', name: 'BLANC' },
-            { score: 100, color: '#222222', name: 'NOIR' }, // Noir avec bordure
+            { score: 100, color: '#111', name: 'NOIR' },
             { score: 200, color: 'rainbow', name: 'RAINBOW' }
         ];
 
@@ -325,9 +335,7 @@
             score: 0,
             pseudo: localStorage.getItem('kevin_pseudo') || "",
             bestScore: 0,
-            // Skin Balle
             selectedBallColor: localStorage.getItem('kevin_color') || '#ff6b6b',
-            // Skin Barre (Nouveau)
             selectedPaddleColor: localStorage.getItem('kevin_paddle_color') || '#00d4ff',
             hue: 0,
             spacePressed: false,
@@ -335,7 +343,7 @@
         };
 
         let ball = { x: 400, y: 300, dx: 0, dy: 0, speedBase: 400, speed: 400, radius: 8 };
-        let paddle = { x: 340, y: 460, width: 120, height: 15 }; // Remonté un peu
+        let paddle = { x: 340, y: 460, width: 120, height: 15 };
         let particles = [];
         let lastTime = 0;
 
@@ -353,7 +361,7 @@
         window.addEventListener('keydown', (e) => { if(e.code === 'Space') state.spacePressed = true; });
         window.addEventListener('keyup', (e) => { if(e.code === 'Space') state.spacePressed = false; });
 
-        // --- LOGIQUE ---
+        // --- INIT MENU ---
         function initMenu() {
             if(state.pseudo) {
                 nameInput.value = state.pseudo;
@@ -394,32 +402,33 @@
             container.innerHTML = '';
             
             skinsData.forEach(skin => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'skin-wrapper';
+
                 const btn = document.createElement('div');
                 btn.className = 'skin-btn';
                 
                 if(skin.color === 'rainbow') btn.style.background = 'linear-gradient(45deg, red, blue)';
                 else if(skin.name === 'NOIR') {
-                    btn.style.background = '#222'; 
-                    btn.style.border = '2px solid #555'; // Contour gris pour le bouton noir
+                    btn.style.background = '#111'; 
+                    btn.style.border = '2px solid #555'; 
                 }
                 else btn.style.background = skin.color;
 
                 if(state.bestScore < skin.score) {
                     btn.classList.add('locked');
-                    btn.title = `Débloquer à ${skin.score}`;
+                    btn.title = `Score: ${skin.score}`;
                 } else {
                     btn.onclick = () => { onSelect(skin.color); refreshAllSkins(); };
                     if(currentSelection === skin.color) btn.classList.add('selected');
                 }
 
-                const scoreTxt = document.createElement('div');
-                scoreTxt.className = 'skin-score-req';
-                scoreTxt.innerText = skin.score;
-                
-                const wrapper = document.createElement('div');
-                wrapper.style.position = 'relative';
+                const txt = document.createElement('div');
+                txt.className = 'skin-req';
+                txt.innerText = skin.score;
+
                 wrapper.appendChild(btn);
-                wrapper.appendChild(scoreTxt);
+                wrapper.appendChild(txt);
                 container.appendChild(wrapper);
             });
         }
@@ -496,26 +505,22 @@
             const ballColor = getDynamicColor(state.selectedBallColor);
             const paddleColor = getDynamicColor(state.selectedPaddleColor);
 
-            // Particules
             particles.forEach(p => {
                 ctx.globalAlpha = p.life; ctx.fillStyle = p.color;
                 ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill();
             });
             ctx.globalAlpha = 1;
 
-            // Raquette
+            // Dessin Raquette avec effet Halo (Espace)
             ctx.fillStyle = paddleColor;
             ctx.shadowBlur = state.spacePressed ? 30 : 10; ctx.shadowColor = paddleColor;
-            
-            // Si la raquette est noire/sombre, on ajoute un contour blanc
-            if(state.selectedPaddleColor === '#222222' || state.selectedPaddleColor === '#000000') {
+            if(state.selectedPaddleColor === '#111' || state.selectedPaddleColor === '#000000') {
                 ctx.strokeStyle = 'white'; ctx.lineWidth = 2;
                 ctx.strokeRect(paddle.x, paddle.y, paddle.width, paddle.height);
             }
-            
             ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
 
-            // Balle
+            // Dessin Balle
             ctx.fillStyle = ballColor;
             ctx.shadowColor = ballColor; ctx.shadowBlur = 15;
             ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI*2); ctx.fill();
