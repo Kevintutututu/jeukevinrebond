@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jeu Kevin - Arcade V13 Ultimate</title>
+    <title>Jeu Kevin - Arcade V14 Ultimate</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
     
     <script type="module">
@@ -56,14 +56,13 @@
                 await setDoc(statsRef, { 
                     name: cleanName,
                     gamesPlayed: increment(1),
-                    coins: increment(earnedCoins) // Ajout des pièces
+                    coins: increment(earnedCoins)
                 }, { merge: true });
 
             } catch (e) { console.error("Erreur Save:", e); }
         };
 
-        // --- GESTION BOUTIQUE (CLOUD) ---
-        
+        // --- GESTION BOUTIQUE ---
         window.fetchUserData = async (name) => {
             if(!name) return null;
             const cleanName = name.trim().toUpperCase();
@@ -104,6 +103,8 @@
         };
 
         // --- LISTENERS LIVE ---
+        
+        // 1. Top 10
         const qTop = query(collection(db, "best_scores"), orderBy("points", "desc"), limit(10));
         onSnapshot(qTop, (snapshot) => {
             const list = document.getElementById('score-list');
@@ -118,6 +119,7 @@
             });
         });
 
+        // 2. Recent
         const qRecent = query(collection(db, "history"), orderBy("date", "desc"), limit(5));
         onSnapshot(qRecent, (snapshot) => {
             const list = document.getElementById('recent-list');
@@ -128,6 +130,21 @@
                 li.style.borderColor = "#ff475733";
                 li.innerHTML = `<span style="color:#aaa; font-size:12px;">${s.name}</span><span style="color:#ff4757; font-weight:bold;">${s.points} pts</span>`;
                 list.appendChild(li);
+            });
+        });
+
+        // 3. Plus Actifs (RE-AJOUTÉ)
+        const qActive = query(collection(db, "user_stats"), orderBy("gamesPlayed", "desc"), limit(10));
+        onSnapshot(qActive, (snapshot) => {
+            const list = document.getElementById('active-list');
+            if(!list) return; list.innerHTML = "";
+            let rank = 1;
+            snapshot.forEach((doc) => {
+                const s = doc.data();
+                const li = document.createElement('li');
+                li.style.borderColor = "#2ecc7133";
+                li.innerHTML = `<div style="display:flex; gap:10px;"><span style="opacity:0.5; width:20px;">#${rank}</span><span style="color:#fff;">${s.name}</span></div><span style="color:#2ecc71;">${s.gamesPlayed}</span>`;
+                list.appendChild(li); rank++;
             });
         });
     </script>
@@ -141,25 +158,19 @@
             transition: background 0.5s ease;
         }
 
-        /* Styles des Backgrounds (CSS PUR = LEGER) */
+        /* Styles des Backgrounds */
         body.bg-default { background: radial-gradient(circle at 50% 50%, #1a1a2e 0%, #000 100%); }
         body.bg-black { background: #000; }
         body.bg-red { background: linear-gradient(135deg, #300, #000); }
         body.bg-blue { background: linear-gradient(135deg, #003, #000); }
         body.bg-green { background: linear-gradient(135deg, #030, #000); }
-        
         body.bg-rsb { background: #f0f0f0; } 
-        body.bg-rsb::before { 
-            content: "RSB"; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            font-size: 20vw; color: #000080; opacity: 0.1; font-weight: bold; pointer-events: none; z-index: -1;
-        }
-
+        body.bg-rsb::before { content: "RSB"; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 20vw; color: #000080; opacity: 0.1; font-weight: bold; pointer-events: none; z-index: -1; }
         body.bg-space { background: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%); }
         body.bg-rainbow { background: linear-gradient(45deg, #ff0000, #ff7300, #fffb00, #48ff00, #00ffd5, #002bff, #7a00ff, #ff00c8, #ff0000); background-size: 400%; animation: rainbow 20s linear infinite; }
         body.bg-forest { background: linear-gradient(to bottom, #134e5e, #71b280); }
         body.bg-mountain { background: linear-gradient(to bottom, #304352, #d7d2cc); }
         body.bg-beach { background: linear-gradient(to bottom, #2980b9, #6dd5fa, #ffffff); }
-
         @keyframes rainbow { 0% {background-position: 0% 50%;} 50% {background-position: 100% 50%;} 100% {background-position: 0% 50%;} }
 
         /* Layout */
@@ -190,26 +201,17 @@
             background: rgba(0,0,0,0.95); z-index: 100; display: none;
             flex-direction: column; align-items: center; justify-content: center;
         }
-        .shop-content {
-            width: 800px; height: 600px; background: #15151f; border: 2px solid #ffd700;
-            border-radius: 15px; padding: 20px; display: flex; flex-direction: column;
-        }
+        .shop-content { width: 800px; height: 600px; background: #15151f; border: 2px solid #ffd700; border-radius: 15px; padding: 20px; display: flex; flex-direction: column; }
         .shop-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 10px; }
         .shop-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; overflow-y: auto; padding-right: 10px; }
         
-        .shop-item {
-            background: #222; border: 1px solid #444; border-radius: 10px; padding: 10px;
-            display: flex; flex-direction: column; align-items: center; gap: 5px; transition: 0.2s;
-        }
+        .shop-item { background: #222; border: 1px solid #444; border-radius: 10px; padding: 10px; display: flex; flex-direction: column; align-items: center; gap: 5px; transition: 0.2s; }
         .shop-item:hover { border-color: #ffd700; }
         .item-preview { width: 100%; height: 60px; border-radius: 5px; margin-bottom: 5px; }
         .item-name { font-size: 12px; font-weight: bold; color: #fff; }
         .item-price { color: #ffd700; font-size: 12px; }
         
-        .shop-action-btn {
-            width: 100%; padding: 5px; margin-top: 5px; border: none; border-radius: 5px;
-            font-family: 'Orbitron'; font-size: 10px; cursor: pointer; font-weight: bold;
-        }
+        .shop-action-btn { width: 100%; padding: 5px; margin-top: 5px; border: none; border-radius: 5px; font-family: 'Orbitron'; font-size: 10px; cursor: pointer; font-weight: bold; }
         .btn-buy { background: #ffd700; color: #000; }
         .btn-equip { background: #00d4ff; color: #000; }
         .btn-equipped { background: #2ecc71; color: #fff; cursor: default; }
@@ -221,12 +223,17 @@
             background: rgba(15, 15, 25, 0.9); border: 1px solid #00d4ff; border-radius: 12px; padding: 15px;
             display: flex; flex-direction: column; box-shadow: 0 0 20px rgba(0,0,0,0.5); overflow: hidden;
         }
-        .box-top10 { flex: 3; } .box-recent { flex: 2; border-color: #ff4757; } .box-perso { height: 100%; border-color: #ff6b6b; }
+        
+        /* Gestion des hauteurs des boites */
+        .box-top10 { flex: 3; } .box-recent { flex: 2; border-color: #ff4757; } 
+        .box-perso { flex: 3; border-color: #ff6b6b; }
+        .box-active { flex: 2; border-color: #2ecc71; } /* Nouvelle Boite */
         
         h2 { text-align: center; margin-top: 0; font-size: 14px; text-transform: uppercase; border-bottom: 2px solid; padding-bottom: 8px; margin-bottom: 8px; }
         .title-blue { color: #00d4ff; border-color: #00d4ff33; }
         .title-red { color: #ff4757; border-color: #ff475733; }
         .title-pink { color: #ff6b6b; border-color: #ff6b6b33; }
+        .title-green { color: #2ecc71; border-color: #2ecc7133; }
 
         ul { list-style: none; padding: 0; overflow-y: auto; flex-grow: 1; }
         li { padding: 6px 8px; border-bottom: 1px solid #ffffff10; display: flex; justify-content: space-between; font-size: 12px; align-items: center; }
@@ -287,7 +294,7 @@
             <div id="canvas-wrapper">
                 <div id="start-screen" class="overlay">
                     <h1 style="color:#00d4ff; text-shadow:0 0 20px #00d4ff; margin-bottom: 5px;">JEU KEVIN</h1>
-                    <p style="color:#888; font-size: 12px; margin-bottom: 30px;">ULTIMATE V13 SHOP</p>
+                    <p style="color:#888; font-size: 12px; margin-bottom: 30px;">ULTIMATE V14 SHOP</p>
                     <input type="text" id="playerNameInput" placeholder="PSEUDO" maxlength="12">
                     <button class="btn" onclick="startGame()">JOUER</button>
                 </div>
@@ -330,6 +337,10 @@
             <div class="sidebar-box box-perso">
                 <h2 class="title-pink">MES RECORDS</h2>
                 <ul id="personal-list"><li style="color:#555; justify-content: center;">Entre ton pseudo</li></ul>
+            </div>
+            <div class="sidebar-box box-active">
+                <h2 class="title-green">PLUS ACTIFS</h2>
+                <ul id="active-list"><li style="color:#555; justify-content: center;">Chargement...</li></ul>
             </div>
         </div>
     </div>
