@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jeu Kevin - Arcade V16 Stable</title>
+    <title>Jeu Kevin - Arcade V17 Stable</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
     
     <script type="module">
@@ -24,7 +24,7 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // --- SAUVEGARDE SCORE ---
+        // --- SAUVEGARDE ---
         let lastSaveTime = 0;
 
         window.saveGameResults = async (name, points, earnedCoins) => {
@@ -62,7 +62,7 @@
             } catch (e) { console.error("Erreur Save:", e); }
         };
 
-        // --- RECUPERATION DONNEES ---
+        // --- DATA FETCH ---
         window.fetchUserBestScore = async (name) => {
             if(!name) return 0;
             const cleanName = name.trim().toUpperCase();
@@ -77,24 +77,19 @@
         window.fetchPersonalRecords = async (name) => {
             const list = document.getElementById('personal-list');
             if(!list || !name) return;
-            
             list.innerHTML = "<li style='justify-content:center; color:#888;'><i>Chargement...</i></li>";
             const cleanName = name.trim().toUpperCase();
-
             try {
                 const q = query(collection(db, "history"), where("name", "==", cleanName));
                 const snap = await getDocs(q);
-                
                 if(snap.empty) {
                     list.innerHTML = "<li style='justify-content:center; color:#555;'>Aucun record</li>";
                     return;
                 }
-
                 let scores = [];
                 snap.forEach(doc => scores.push(doc.data().points));
                 scores.sort((a, b) => b - a);
                 scores = scores.slice(0, 10);
-
                 list.innerHTML = "";
                 scores.forEach((s, index) => {
                     const li = document.createElement('li');
@@ -149,7 +144,13 @@
                 const s = doc.data();
                 const li = document.createElement('li');
                 let color = rank === 1 ? '#ffd700' : (rank === 2 ? '#c0c0c0' : (rank === 3 ? '#cd7f32' : 'white'));
-                li.innerHTML = `<div style="display:flex; gap:10px;"><span style="opacity:0.5; width:20px;">#${rank}</span><span style="color:${color}; font-weight:bold;">${s.name}</span></div><span style="color:#00d4ff;">${s.points}</span>`;
+                // CORRECTION COURONNE ICI
+                let medal = rank === 1 ? '<span style="margin-right:5px;">👑</span>' : '';
+                
+                li.innerHTML = `<div style="display:flex; align-items:center; gap:5px;">
+                    <span style="opacity:0.5; width:20px;">#${rank}</span>
+                    <span style="color:${color}; font-weight:bold;">${medal}${s.name}</span>
+                </div><span style="color:#00d4ff;">${s.points}</span>`;
                 list.appendChild(li); rank++;
             });
         });
@@ -191,7 +192,6 @@
             transition: background 0.5s ease;
         }
 
-        /* BG Styles */
         body.bg-default { background: radial-gradient(circle at 50% 50%, #1a1a2e 0%, #000 100%); }
         body.bg-black { background: #000; }
         body.bg-red { background: linear-gradient(135deg, #300, #000); }
@@ -206,7 +206,6 @@
         body.bg-beach { background: linear-gradient(to bottom, #2980b9, #6dd5fa, #ffffff); }
         @keyframes rainbow { 0% {background-position: 0% 50%;} 50% {background-position: 100% 50%;} 100% {background-position: 0% 50%;} }
 
-        /* Layout */
         #main-layout { display: flex; gap: 20px; align-items: flex-start; height: 80vh; width: 95%; max-width: 1400px; justify-content: center; z-index: 5; }
         #game-column { display: flex; flex-direction: column; gap: 15px; }
         
@@ -214,10 +213,10 @@
             position: relative; border: 2px solid #333; background: rgba(0,0,0,0.8);
             width: 800px; height: 500px; border-radius: 12px;
             box-shadow: 0 0 50px rgba(0, 212, 255, 0.1);
+            overflow: hidden; /* Sécurité pour ne rien laisser dépasser */
         }
         canvas { display: block; border-radius: 12px; width: 100%; height: 100%; }
 
-        /* Shop Button */
         #shop-btn-container {
             position: absolute; top: 20px; left: 20px; z-index: 50;
             display: flex; align-items: center; gap: 10px;
@@ -228,7 +227,6 @@
         .shop-icon { font-size: 24px; }
         .coin-balance { font-size: 18px; color: #ffd700; font-weight: bold; }
 
-        /* Shop Modal */
         #shop-modal {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.95); z-index: 100; display: none;
@@ -248,7 +246,6 @@
         .btn-equipped { background: #2ecc71; color: #fff; cursor: default; }
         .btn-close { background: #ff4757; color: white; border: none; padding: 5px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
 
-        /* Sidebars */
         .sidebar-column { width: 260px; height: 635px; display: flex; flex-direction: column; gap: 15px; }
         .sidebar-box {
             background: rgba(15, 15, 25, 0.9); border: 1px solid #00d4ff; border-radius: 12px; padding: 15px;
@@ -266,7 +263,6 @@
         li { padding: 6px 8px; border-bottom: 1px solid #ffffff10; display: flex; justify-content: space-between; font-size: 12px; align-items: center; }
         ul::-webkit-scrollbar { width: 4px; } ul::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
 
-        /* Skins Panel */
         #skins-panel { width: 800px; padding: 10px 20px; background: rgba(15, 15, 25, 0.8); border: 1px solid #333; border-radius: 12px; display: flex; flex-direction: column; gap: 10px; }
         .skins-row { display: flex; align-items: center; gap: 15px; }
         .skins-label { width: 60px; font-size: 12px; color: #888; text-align: right; margin-right: 10px; font-weight: bold; }
@@ -278,7 +274,6 @@
         .skin-btn.selected { border-color: white; transform: scale(1.2); box-shadow: 0 0 10px white; }
         .skin-req { font-size: 9px; color: #666; margin-top: 4px; font-family: monospace; }
 
-        /* Footer */
         .footer-scroll { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(0,0,0,0.9); border-top: 1px solid #333; height: 30px; overflow: hidden; white-space: nowrap; display: flex; align-items: center; z-index: 100; }
         .scrolling-text { animation: scroll 20s linear infinite; color: #00d4ff; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; padding-left: 100%; }
         @keyframes scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
@@ -315,12 +310,11 @@
     </div>
 
     <div id="main-layout">
-        
         <div id="game-column">
             <div id="canvas-wrapper">
                 <div id="start-screen" class="overlay">
                     <h1 style="color:#00d4ff; text-shadow:0 0 20px #00d4ff; margin-bottom: 5px;">JEU KEVIN</h1>
-                    <p style="color:#888; font-size: 12px; margin-bottom: 15px;">ULTIMATE V16 STABLE</p>
+                    <p style="color:#888; font-size: 12px; margin-bottom: 15px;">ULTIMATE V17</p>
                     <p style="color:#ffd700; font-size: 16px; margin-bottom: 30px;">MEILLEUR SCORE : <span id="bestScoreDisplay">0</span></p>
                     <input type="text" id="playerNameInput" placeholder="PSEUDO" maxlength="12">
                     <button class="btn" onclick="startGame()">JOUER</button>
@@ -556,7 +550,7 @@
         }
 
         function resetGame() {
-            state.score = 0;
+            state.score = 0; 
             document.getElementById('liveScore').innerText = '0';
             ball.x = canvas.width/2; ball.y = canvas.height/3; ball.speed = ball.speedBase;
             let angle = Math.random() * Math.PI/2 + Math.PI/4;
