@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Jeu Kevin - Ultimate</title>
   <style>
+    /* CSS GLOBAL */
     body {
       box-sizing: border-box;
       margin: 0;
@@ -20,15 +21,20 @@
       overflow-x: hidden;
     }
 
-    /* Conteneur principal pour mettre le jeu et le score côte à côte */
+    /* MISE EN PAGE */
     .main-layout {
       display: flex;
       gap: 40px;
       align-items: flex-start;
       padding: 20px;
-      flex-wrap: wrap; /* Pour que ça passe en colonne sur mobile */
+      flex-wrap: wrap;
       justify-content: center;
     }
 
     .game-section {
-      display
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .
