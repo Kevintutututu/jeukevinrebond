@@ -3,16 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jeu Kevin - Arcade Online</title>
+    <title>Jeu Kevin - Arcade Ultimate</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
     
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, query, orderBy, limit, onSnapshot } 
+        import { getFirestore, collection, addDoc, query, orderBy, limit, onSnapshot, where, getDocs } 
         from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         // ==================================================================
-        // TES CLES FIREBASE (J'ai corrigé l'erreur de guillemet ici)
+        // TES CLES SONT DEJA INTEGREES ICI :
         // ==================================================================
         const firebaseConfig = {
             apiKey: "AIzaSyDis3uQdBdzfuOnLF2QMfsmuSyFni2LoLU",
@@ -25,11 +25,10 @@
         };
         // ==================================================================
 
-        // Initialisation de la connexion
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // Fonction pour sauvegarder le score (accessible depuis le jeu)
+        // Sauvegarder le score en ligne
         window.saveScoreOnline = async (name, points) => {
             if(!name || points === 0) return;
             try {
@@ -38,40 +37,39 @@
                     points: points,
                     date: new Date()
                 });
-                console.log("Score sauvegardé en ligne !");
-            } catch (e) {
-                console.error("Erreur de sauvegarde : ", e);
-            }
+            } catch (e) { console.error(e); }
         };
 
-        // Écouter le classement en direct
+        // Récupérer le meilleur score personnel du joueur pour débloquer les couleurs
+        window.fetchUserBestScore = async (name) => {
+            try {
+                const q = query(collection(db, "scores"), where("name", "==", name), orderBy("points", "desc"), limit(1));
+                const querySnapshot = await getDocs(q);
+                if (!querySnapshot.empty) {
+                    return querySnapshot.docs[0].data().points;
+                }
+            } catch (e) { console.error(e); }
+            return 0;
+        };
+
+        // Classement Live
         const q = query(collection(db, "scores"), orderBy("points", "desc"), limit(10));
         onSnapshot(q, (snapshot) => {
             const list = document.getElementById('score-list');
             if(!list) return;
-            
-            list.innerHTML = ""; // On vide la liste
-            
+            list.innerHTML = "";
             let rank = 1;
             snapshot.forEach((doc) => {
                 const s = doc.data();
                 const li = document.createElement('li');
-                
-                // Couleurs pour le podium
-                let rankColor = '#fff'; 
-                let medal = '';
-                if(rank === 1) { rankColor = '#ffd700'; medal = '👑'; }
-                if(rank === 2) { rankColor = '#c0c0c0'; }
-                if(rank === 3) { rankColor = '#cd7f32'; }
-
+                let color = rank === 1 ? '#ffd700' : (rank === 2 ? '#c0c0c0' : (rank === 3 ? '#cd7f32' : 'white'));
+                let medal = rank === 1 ? '👑' : '';
                 li.innerHTML = `
-                    <div style="display:flex; align-items:center; gap:10px;">
-                        <span style="opacity:0.5; width:25px; font-size:12px;">#${rank}</span>
-                        <span style="font-weight:bold; color:${rankColor}; text-shadow:0 0 5px ${rankColor}40;">
-                            ${medal} ${s.name.toUpperCase()}
-                        </span>
+                    <div style="display:flex; gap:10px;">
+                        <span style="opacity:0.5; width:20px;">#${rank}</span>
+                        <span style="color:${color}; font-weight:bold;">${medal} ${s.name.toUpperCase()}</span>
                     </div>
-                    <span style="color:#00d4ff; font-weight:bold; font-family:'Courier New';">${s.points}</span>
+                    <span style="color:#00d4ff;">${s.points}</span>
                 `;
                 list.appendChild(li);
                 rank++;
@@ -80,123 +78,88 @@
     </script>
 
     <style>
-        /* --- STYLE GRAPHIQUE (Cyberpunk / Arcade) --- */
         * { box-sizing: border-box; }
-        
         body {
-            margin: 0; padding: 0;
-            background-color: #050510;
-            background-image: radial-gradient(circle at 50% 50%, #1a1a2e 0%, #000000 100%);
-            font-family: 'Orbitron', sans-serif;
-            color: white;
-            height: 100vh;
-            overflow: hidden;
-            display: flex; justify-content: center; align-items: center;
+            margin: 0; padding: 0; background: #050510 radial-gradient(circle at 50% 50%, #1a1a2e 0%, #000 100%);
+            font-family: 'Orbitron', sans-serif; color: white; height: 100vh; overflow: hidden;
+            display: flex; justify-content: center; align-items: center; user-select: none;
         }
-
-        #game-container {
-            position: relative;
-            display: flex; gap: 20px; align-items: flex-start;
-        }
-
-        /* Cadre du jeu */
+        #game-container { display: flex; gap: 20px; align-items: flex-start; }
+        
         #canvas-wrapper {
-            position: relative;
+            position: relative; border: 2px solid #333; background: #000;
+            width: 800px; height: 600px; border-radius: 12px;
             box-shadow: 0 0 50px rgba(0, 212, 255, 0.1);
-            border-radius: 12px;
-            border: 2px solid #333;
-            background: #000;
-            width: 800px; height: 600px;
         }
-        canvas { display: block; border-radius: 12px; cursor: none; width: 100%; height: 100%; }
+        canvas { display: block; border-radius: 12px; width: 100%; height: 100%; }
 
-        /* Panneau Latéral (Classement) */
         #sidebar {
-            width: 300px; height: 600px;
-            background: rgba(15, 15, 25, 0.9);
-            border: 1px solid #00d4ff;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+            width: 300px; height: 600px; background: rgba(15, 15, 25, 0.9);
+            border: 1px solid #00d4ff; border-radius: 12px; padding: 20px;
             display: flex; flex-direction: column;
         }
+        h2 { text-align: center; color: #00d4ff; border-bottom: 2px solid #00d4ff33; padding-bottom: 10px; margin-top: 0; }
+        ul { list-style: none; padding: 0; overflow-y: auto; flex-grow: 1; }
+        li { padding: 10px; border-bottom: 1px solid #ffffff10; display: flex; justify-content: space-between; }
 
-        h2 {
-            color: #00d4ff; text-align: center; margin-top: 0;
-            font-size: 22px; border-bottom: 2px solid rgba(0, 212, 255, 0.3);
-            padding-bottom: 15px; letter-spacing: 2px;
-            text-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
-        }
-
-        #score-list { list-style: none; padding: 0; overflow-y: auto; flex-grow: 1; }
-        #score-list li {
-            padding: 12px 10px; border-bottom: 1px solid rgba(255,255,255,0.05);
-            font-size: 14px; display: flex; justify-content: space-between;
-        }
-
-        /* Ecrans superposés (Login / Game Over) */
-        .overlay-screen {
+        .overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.92); z-index: 20;
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            backdrop-filter: blur(8px); border-radius: 12px;
+            background: rgba(0,0,0,0.95); z-index: 20; display: flex;
+            flex-direction: column; justify-content: center; align-items: center;
+            border-radius: 12px;
         }
 
-        /* Elements UI */
         input {
-            padding: 15px; font-size: 20px; border-radius: 8px;
-            border: 2px solid #00d4ff; background: #0f0f1e; color: white;
-            font-family: 'Orbitron', sans-serif; text-align: center;
-            margin-bottom: 25px; width: 280px; outline: none;
-            box-shadow: 0 0 15px rgba(0, 212, 255, 0.1);
-            transition: 0.3s;
+            padding: 15px; font-size: 20px; background: #0f0f1e; border: 2px solid #00d4ff;
+            color: white; text-align: center; font-family: inherit; margin-bottom: 20px;
+            border-radius: 8px; outline: none; width: 280px;
         }
-        input:focus { box-shadow: 0 0 25px rgba(0, 212, 255, 0.4); transform: scale(1.02); }
-
         .btn {
-            padding: 15px 50px; font-size: 22px;
-            background: linear-gradient(90deg, #00d4ff, #005bea);
-            border: none; border-radius: 50px; cursor: pointer;
-            font-weight: bold; color: white; font-family: 'Orbitron', sans-serif;
-            transition: 0.2s; text-transform: uppercase; letter-spacing: 2px;
-            box-shadow: 0 0 20px rgba(0, 212, 255, 0.4);
+            padding: 15px 50px; font-size: 22px; background: linear-gradient(90deg, #00d4ff, #005bea);
+            border: none; color: white; font-family: inherit; font-weight: bold;
+            cursor: pointer; border-radius: 50px; transition: 0.2s;
         }
-        .btn:hover { transform: scale(1.05); box-shadow: 0 0 40px rgba(0, 212, 255, 0.8); }
+        .btn:hover { transform: scale(1.05); box-shadow: 0 0 20px #00d4ff; }
 
-        /* Score en jeu */
-        #liveScore {
-            position: absolute; top: 20px; left: 20px;
-            font-size: 32px; font-weight: bold; color: rgba(255,255,255,0.2);
-            pointer-events: none;
+        /* SKINS SELECTOR */
+        .skins-container {
+            display: flex; gap: 15px; margin-bottom: 30px; flex-wrap: wrap; justify-content: center; width: 80%;
         }
+        .skin-btn {
+            width: 50px; height: 50px; border-radius: 50%; border: 3px solid #333;
+            cursor: pointer; position: relative; transition: 0.2s;
+        }
+        .skin-btn.locked { opacity: 0.3; cursor: not-allowed; border-color: #333; }
+        .skin-btn.locked::after { content: '🔒'; position: absolute; top: 12px; left: 12px; font-size: 16px; }
+        .skin-btn.selected { border-color: white; transform: scale(1.2); box-shadow: 0 0 15px white; }
+        .skin-label { font-size: 10px; text-align: center; margin-top: 60px; color: #aaa; width: 100%; position: absolute; left: 0;}
 
-        /* Responsive Mobile */
-        @media (max-width: 1100px) {
-            #game-container { flex-direction: column; align-items: center; }
-            #sidebar { width: 100%; max-width: 800px; height: 250px; }
-            #canvas-wrapper { width: 95vw; height: 60vh; }
-        }
+        /* Score HUD */
+        #liveScore { position: absolute; top: 20px; left: 20px; font-size: 32px; font-weight: bold; color: #ffffff40; pointer-events: none; }
     </style>
 </head>
 <body>
 
     <div id="game-container">
-        
         <div id="canvas-wrapper">
             
-            <div id="start-screen" class="overlay-screen">
-                <h1 style="color:#00d4ff; text-shadow:0 0 30px #00d4ff; font-size:48px; margin:0 0 10px 0;">JEU KEVIN</h1>
-                <p style="color:#aaa; margin-bottom:40px; letter-spacing:4px;">ONLINE EDITION</p>
-                <input type="text" id="playerNameInput" placeholder="TON PSEUDO" maxlength="12" autocomplete="off">
+            <div id="start-screen" class="overlay">
+                <h1 style="color:#00d4ff; text-shadow:0 0 20px #00d4ff; margin-bottom: 5px;">JEU KEVIN</h1>
+                <p style="color:#888; font-size: 12px; margin-bottom: 30px;">MEILLEUR SCORE LOCAL : <span id="bestScoreDisplay" style="color:white">0</span></p>
+                
+                <input type="text" id="playerNameInput" placeholder="TON PSEUDO" maxlength="12">
+                
+                <div style="margin-bottom:10px; color:#aaa; font-size:14px;">CHOISIS TA COULEUR :</div>
+                <div class="skins-container" id="skinsContainer">
+                    </div>
+
                 <button class="btn" onclick="startGame()">JOUER</button>
             </div>
 
-            <div id="game-over-screen" class="overlay-screen" style="display:none;">
-                <h2 style="font-size: 50px; color: #ff6b6b; border:none; margin-bottom:10px; text-shadow:0 0 30px #ff6b6b;">GAME OVER</h2>
-                <p style="font-size: 24px; margin-bottom: 30px; color:#ddd;">
-                    Score Final : <span id="finalScoreDisplay" style="color:#00d4ff; font-weight:bold; font-size:32px;">0</span>
-                </p>
-                <button class="btn" onclick="resetGame()">REJOUER</button>
+            <div id="game-over-screen" class="overlay" style="display:none;">
+                <h2 style="color:#ff6b6b; font-size:48px; margin-bottom:10px;">PERDU</h2>
+                <p style="font-size:24px; margin-bottom:30px;">Score : <span id="finalScore" style="color:#00d4ff">0</span></p>
+                <button class="btn" onclick="returnToMenu()">MENU</button>
             </div>
 
             <canvas id="gameCanvas" width="800" height="600"></canvas>
@@ -204,208 +167,232 @@
         </div>
 
         <div id="sidebar">
-            <h2>CLASSEMENT LIVE</h2>
-            <ul id="score-list">
-                <li style="justify-content:center; padding-top:20px; color:#555;">Chargement des scores...</li>
-            </ul>
+            <h2>TOP 10</h2>
+            <ul id="score-list"><li>Chargement...</li></ul>
         </div>
-
     </div>
 
     <script>
-        // --- MOTEUR DE JEU ---
+        // --- CONFIGURATION ---
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        
-        // UI Elements
-        const startScreen = document.getElementById('start-screen');
-        const gameOverScreen = document.getElementById('game-over-screen');
+        const skinsContainer = document.getElementById('skinsContainer');
         const nameInput = document.getElementById('playerNameInput');
-        const liveScoreEl = document.getElementById('liveScore');
-        const finalScoreEl = document.getElementById('finalScoreDisplay');
+        const bestScoreDisplay = document.getElementById('bestScoreDisplay');
 
-        // Variables Etat
-        let gameRunning = false;
-        let score = 0;
-        let playerName = "Anonyme";
+        // Définition des skins
+        const SKINS = [
+            { score: 0, color: '#ff6b6b', name: 'ROUGE' },
+            { score: 10, color: '#2ecc71', name: 'VERT' },
+            { score: 25, color: '#3498db', name: 'BLEU' },
+            { score: 50, color: '#ff9ff3', name: 'ROSE' },
+            { score: 100, color: '#f1c40f', name: 'JAUNE' },
+            { score: 200, color: 'rainbow', name: 'RAINBOW' }
+        ];
+
+        let state = {
+            running: false,
+            score: 0,
+            pseudo: localStorage.getItem('kevin_pseudo') || "Anonyme",
+            bestScore: parseInt(localStorage.getItem('kevin_best_local')) || 0,
+            selectedColor: localStorage.getItem('kevin_color') || '#ff6b6b',
+            hue: 0 // Pour le rainbow
+        };
+
+        let ball = { x: 400, y: 300, dx: 0, dy: 0, speed: 6, radius: 8 };
+        let paddle = { x: 340, y: 560, width: 120, height: 15 };
         let particles = [];
 
-        // Paramètres Gameplay
-        const PADDLE_WIDTH = 120;
-        const PADDLE_HEIGHT = 15;
-        const BALL_RADIUS = 8;
-        const MAX_SPEED = 18;
-
-        let ball = { x: 400, y: 300, dx: 0, dy: 0, speed: 6, color: '#ff6b6b' };
-        let paddle = { x: 340, y: 560, color: '#00d4ff' };
-
-        // --- GESTION DES PARTICULES (Explosions) ---
-        class Particle {
-            constructor(x, y, color) {
-                this.x = x; this.y = y; this.color = color;
-                this.size = Math.random() * 3 + 1;
-                this.speedX = (Math.random() - 0.5) * 8;
-                this.speedY = (Math.random() - 0.5) * 8;
-                this.life = 1.0;
-            }
-            update() {
-                this.x += this.speedX; this.y += this.speedY;
-                this.life -= 0.04; // Disparition progressive
-            }
-            draw() {
-                ctx.globalAlpha = this.life; ctx.fillStyle = this.color;
-                ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI*2); ctx.fill();
-                ctx.globalAlpha = 1.0;
-            }
-        }
-
-        function createExplosion(x, y, color) {
-            for(let i=0; i<12; i++) particles.push(new Particle(x, y, color));
-        }
-
-        // --- CONTROLES ---
-        canvas.addEventListener('mousemove', (e) => {
+        // --- GESTION SOURIS (CORRECTION SORTIE CADRE) ---
+        // On écoute 'window' au lieu de 'canvas' pour ne jamais perdre le contrôle
+        window.addEventListener('mousemove', (e) => {
+            if(!state.running) return;
             const rect = canvas.getBoundingClientRect();
-            // Gestion du redimensionnement (responsive)
+            // Calcul position relative au canvas même si la souris est dehors
             const scaleX = canvas.width / rect.width;
-            let mouseX = (e.clientX - rect.left) * scaleX;
+            let relativeX = (e.clientX - rect.left) * scaleX;
             
-            paddle.x = mouseX - (PADDLE_WIDTH / 2);
-            // Bloquer la raquette dans les murs
+            // On centre la raquette
+            paddle.x = relativeX - (paddle.width / 2);
+
+            // Limites
             if(paddle.x < 0) paddle.x = 0;
-            if(paddle.x > canvas.width - PADDLE_WIDTH) paddle.x = canvas.width - PADDLE_WIDTH;
+            if(paddle.x > canvas.width - paddle.width) paddle.x = canvas.width - paddle.width;
         });
 
-        // --- LOGIQUE ---
-        function startGame() {
-            const val = nameInput.value.trim();
-            if(val) {
-                playerName = val;
-                localStorage.setItem('kevin_last_name', playerName);
-            } else {
-                playerName = "Anonyme";
-            }
-            startScreen.style.display = 'none';
-            resetGameLogic();
+        // --- INITIALISATION MENU ---
+        function initMenu() {
+            nameInput.value = state.pseudo;
+            bestScoreDisplay.innerText = state.bestScore;
+            renderSkins();
         }
 
-        function resetGameLogic() {
-            gameRunning = true;
-            score = 0;
-            liveScoreEl.innerText = '0';
-            gameOverScreen.style.display = 'none';
-            canvas.style.cursor = 'none';
-            particles = [];
+        // Vérification du score en ligne si le pseudo change
+        nameInput.addEventListener('blur', async () => {
+            const name = nameInput.value.trim();
+            if(name && window.fetchUserBestScore) {
+                // On va chercher le score en ligne pour voir si le joueur a débloqué des trucs
+                const onlineBest = await window.fetchUserBestScore(name);
+                if(onlineBest > state.bestScore) {
+                    state.bestScore = onlineBest;
+                    localStorage.setItem('kevin_best_local', onlineBest);
+                    bestScoreDisplay.innerText = onlineBest;
+                    renderSkins(); // Mettre à jour les cadenas
+                }
+            }
+        });
 
-            // Reset Balle
-            ball.x = canvas.width / 2;
-            ball.y = canvas.height / 3;
-            ball.speed = 6; // Vitesse initiale
+        function renderSkins() {
+            skinsContainer.innerHTML = '';
+            SKINS.forEach(skin => {
+                const btn = document.createElement('div');
+                btn.className = 'skin-btn';
+                
+                // Gestion Rainbow ou Couleur unie
+                if(skin.color === 'rainbow') {
+                    btn.style.background = 'linear-gradient(45deg, red, orange, yellow, green, blue, violet)';
+                } else {
+                    btn.style.background = skin.color;
+                }
+
+                // Verrouillage
+                if(state.bestScore < skin.score) {
+                    btn.classList.add('locked');
+                    btn.title = `Débloquer à ${skin.score} pts`;
+                } else {
+                    btn.onclick = () => selectSkin(skin.color);
+                    if(state.selectedColor === skin.color) btn.classList.add('selected');
+                }
+
+                // Label
+                const label = document.createElement('div');
+                label.className = 'skin-label';
+                label.innerText = skin.name;
+                btn.appendChild(label);
+
+                skinsContainer.appendChild(btn);
+            });
+        }
+
+        function selectSkin(color) {
+            state.selectedColor = color;
+            localStorage.setItem('kevin_color', color);
+            renderSkins();
+        }
+
+        // --- MOTEUR DE JEU ---
+        function startGame() {
+            const name = nameInput.value.trim() || "Anonyme";
+            state.pseudo = name;
+            localStorage.setItem('kevin_pseudo', name);
+
+            document.getElementById('start-screen').style.display = 'none';
+            document.getElementById('game-over-screen').style.display = 'none';
             
-            // Angle de départ aléatoire (vers le bas)
-            let angle = Math.random() * Math.PI/2 + Math.PI/4; // Entre 45° et 135°
+            resetGame();
+            state.running = true;
+            gameLoop();
+        }
+
+        function resetGame() {
+            state.score = 0;
+            document.getElementById('liveScore').innerText = '0';
+            ball.x = canvas.width/2; ball.y = canvas.height/3;
+            ball.speed = 6;
+            let angle = Math.random() * Math.PI/2 + Math.PI/4;
             ball.dx = Math.cos(angle) * ball.speed;
             ball.dy = Math.sin(angle) * ball.speed;
-            if(ball.dy < 0) ball.dy = -ball.dy; // Force vers le bas
-
-            requestAnimationFrame(gameLoop);
+            if(ball.dy < 0) ball.dy = -ball.dy;
+            particles = [];
         }
 
-        function resetGame() { resetGameLogic(); }
-
         function update() {
-            if(!gameRunning) return;
+            // Couleur Rainbow dynamique
+            state.hue = (state.hue + 2) % 360;
 
-            // Update particules
+            // Particules
             for(let i=particles.length-1; i>=0; i--) {
-                particles[i].update();
-                if(particles[i].life <= 0) particles.splice(i, 1);
+                particles[i].life -= 0.04;
+                particles[i].x += particles[i].sx;
+                particles[i].y += particles[i].sy;
+                if(particles[i].life <= 0) particles.splice(i,1);
             }
 
             // Physique Balle
-            ball.x += ball.dx;
-            ball.y += ball.dy;
+            ball.x += ball.dx; ball.y += ball.dy;
 
-            // Rebond Murs
-            if(ball.x - BALL_RADIUS < 0) {
-                ball.x = BALL_RADIUS; ball.dx *= -1;
-                createExplosion(ball.x, ball.y, '#fff');
-            }
-            if(ball.x + BALL_RADIUS > canvas.width) {
-                ball.x = canvas.width - BALL_RADIUS; ball.dx *= -1;
-                createExplosion(ball.x, ball.y, '#fff');
-            }
-            if(ball.y - BALL_RADIUS < 0) {
-                ball.y = BALL_RADIUS; ball.dy *= -1;
-                createExplosion(ball.x, ball.y, '#fff');
-            }
+            // Murs
+            if(ball.x < ball.radius) { ball.x=ball.radius; ball.dx*=-1; }
+            if(ball.x > canvas.width-ball.radius) { ball.x=canvas.width-ball.radius; ball.dx*=-1; }
+            if(ball.y < ball.radius) { ball.y=ball.radius; ball.dy*=-1; }
 
-            // Rebond Raquette (Physique avancée)
-            // On vérifie si le bas de la balle touche le haut de la raquette
-            if(ball.y + BALL_RADIUS >= paddle.y && 
-               ball.y - BALL_RADIUS <= paddle.y + PADDLE_HEIGHT && 
-               ball.dy > 0) {
-                
-                // Est-ce qu'on est au dessus horizontalement ?
-                if(ball.x >= paddle.x && ball.x <= paddle.x + PADDLE_WIDTH) {
+            // Raquette
+            if(ball.y + ball.radius >= paddle.y && ball.y - ball.radius <= paddle.y + paddle.height && ball.dy > 0) {
+                if(ball.x >= paddle.x && ball.x <= paddle.x + paddle.width) {
+                    let hit = (ball.x - (paddle.x + paddle.width/2)) / (paddle.width/2);
+                    let angle = hit * (Math.PI/3);
+                    ball.speed = Math.min(ball.speed + 0.5, 20); // Max speed 20
+                    ball.dx = ball.speed * Math.sin(angle);
+                    ball.dy = -ball.speed * Math.cos(angle);
+                    ball.y = paddle.y - ball.radius - 1;
                     
-                    // Calcul de l'endroit où on tape (-1 gauche, 0 centre, 1 droite)
-                    let hitPoint = (ball.x - (paddle.x + PADDLE_WIDTH/2)) / (PADDLE_WIDTH/2);
-                    
-                    // Augmentation vitesse
-                    if(ball.speed < MAX_SPEED) ball.speed += 0.5;
-                    
-                    // Nouvel angle (max 60 degrés)
-                    let bounceAngle = hitPoint * (Math.PI/3);
-                    
-                    ball.dx = ball.speed * Math.sin(bounceAngle);
-                    ball.dy = -ball.speed * Math.cos(bounceAngle);
-                    
-                    // Repousser la balle pour éviter qu'elle "colle"
-                    ball.y = paddle.y - BALL_RADIUS - 1;
-
-                    // Score et FX
-                    score++;
-                    liveScoreEl.innerText = score;
-                    createExplosion(ball.x, paddle.y, '#00d4ff');
+                    state.score++;
+                    document.getElementById('liveScore').innerText = state.score;
+                    spawnParticles(ball.x, paddle.y, getCurrentColor());
                 }
             }
 
             // Perdu
-            if(ball.y - BALL_RADIUS > canvas.height) {
-                endGame();
-            }
+            if(ball.y > canvas.height) endGame();
         }
 
         function draw() {
-            // Effet de traînée (Trail)
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            // Trail
+            ctx.fillStyle = 'rgba(0,0,0,0.25)';
+            ctx.fillRect(0,0,canvas.width, canvas.height);
 
-            // Dessin Particules
-            particles.forEach(p => p.draw());
+            const currentColor = getCurrentColor();
 
-            // Raquette (Neon)
-            ctx.shadowBlur = 20; ctx.shadowColor = paddle.color;
-            ctx.fillStyle = paddle.color;
-            ctx.fillRect(paddle.x, paddle.y, PADDLE_WIDTH, PADDLE_HEIGHT);
-            // Petit détail design sur la raquette
-            ctx.fillStyle = 'white';
-            ctx.fillRect(paddle.x + 10, paddle.y + 5, PADDLE_WIDTH - 20, 2);
+            // Particules
+            particles.forEach(p => {
+                ctx.globalAlpha = p.life;
+                ctx.fillStyle = p.color;
+                ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill();
+            });
+            ctx.globalAlpha = 1;
 
-            // Balle (Neon)
-            ctx.shadowBlur = 15; ctx.shadowColor = ball.color;
-            ctx.fillStyle = ball.color;
-            ctx.beginPath(); 
-            ctx.arc(ball.x, ball.y, BALL_RADIUS, 0, Math.PI*2); 
-            ctx.fill();
+            // Raquette
+            ctx.fillStyle = '#00d4ff';
+            ctx.shadowBlur = 15; ctx.shadowColor = '#00d4ff';
+            ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
 
-            // Reset ombres
+            // Balle
+            ctx.fillStyle = currentColor;
+            ctx.shadowColor = currentColor;
+            ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI*2); ctx.fill();
+            
             ctx.shadowBlur = 0;
         }
 
+        function getCurrentColor() {
+            if(state.selectedColor === 'rainbow') {
+                return `hsl(${state.hue}, 100%, 50%)`;
+            }
+            return state.selectedColor;
+        }
+
+        function spawnParticles(x, y, color) {
+            for(let i=0; i<10; i++) {
+                particles.push({
+                    x: x, y: y, color: color,
+                    sx: (Math.random()-0.5)*8, sy: (Math.random()-0.5)*8,
+                    size: Math.random()*3+1, life: 1
+                });
+            }
+        }
+
         function gameLoop() {
-            if(gameRunning) {
+            if(state.running) {
                 update();
                 draw();
                 requestAnimationFrame(gameLoop);
@@ -413,24 +400,30 @@
         }
 
         function endGame() {
-            gameRunning = false;
-            finalScoreEl.innerText = score;
-            gameOverScreen.style.display = 'flex';
-            canvas.style.cursor = 'default';
-            
-            // Sauvegarde Cloud
-            if(window.saveScoreOnline) {
-                window.saveScoreOnline(playerName, score);
+            state.running = false;
+            // Gestion High Score Local
+            if(state.score > state.bestScore) {
+                state.bestScore = state.score;
+                localStorage.setItem('kevin_best_local', state.score);
             }
+            // Sauvegarde Cloud
+            if(window.saveScoreOnline) window.saveScoreOnline(state.pseudo, state.score);
+
+            document.getElementById('finalScore').innerText = state.score;
+            document.getElementById('game-over-screen').style.display = 'flex';
         }
 
-        // Chargement initial du pseudo si existant
-        if(localStorage.getItem('kevin_last_name')) {
-            nameInput.value = localStorage.getItem('kevin_last_name');
+        function returnToMenu() {
+            document.getElementById('game-over-screen').style.display = 'none';
+            document.getElementById('start-screen').style.display = 'flex';
+            initMenu(); // Recharger le menu pour mettre à jour les cadenas
+            // Effacer l'écran
+            ctx.fillStyle = 'black'; ctx.fillRect(0,0,canvas.width,canvas.height);
         }
 
-        // Premier rendu (écran noir propre)
-        ctx.fillStyle = 'black'; ctx.fillRect(0,0,canvas.width, canvas.height);
+        // Démarrage
+        initMenu();
+        ctx.fillStyle = 'black'; ctx.fillRect(0,0,canvas.width,canvas.height);
 
     </script>
 </body>
