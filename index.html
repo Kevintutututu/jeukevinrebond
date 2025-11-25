@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jeu Kevin - Arcade Ultimate</title>
+    <title>Jeu Kevin - Ultimate Connected</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
     
     <script type="module">
@@ -12,7 +12,7 @@
         from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         // ==================================================================
-        // TES CLES SONT INTEGREES ICI :
+        // CLES FIREBASE INTEGREES
         // ==================================================================
         const firebaseConfig = {
             apiKey: "AIzaSyDis3uQdBdzfuOnLF2QMfsmuSyFni2LoLU",
@@ -28,7 +28,7 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // Sauvegarder le score en ligne
+        // Sauvegarder le score
         window.saveScoreOnline = async (name, points) => {
             if(!name || points === 0) return;
             try {
@@ -40,19 +40,48 @@
             } catch (e) { console.error(e); }
         };
 
-        // Récupérer le meilleur score personnel du joueur pour débloquer les couleurs
+        // Récupérer le record global du joueur (pour débloquer les skins)
         window.fetchUserBestScore = async (name) => {
             try {
                 const q = query(collection(db, "scores"), where("name", "==", name), orderBy("points", "desc"), limit(1));
-                const querySnapshot = await getDocs(q);
-                if (!querySnapshot.empty) {
-                    return querySnapshot.docs[0].data().points;
-                }
+                const snap = await getDocs(q);
+                if (!snap.empty) return snap.docs[0].data().points;
             } catch (e) { console.error(e); }
             return 0;
         };
 
-        // Classement Live
+        // Récupérer les 10 meilleurs scores PERSONNELS
+        window.fetchPersonalRecords = async (name) => {
+            const list = document.getElementById('personal-list');
+            if(!list) return;
+            list.innerHTML = "<li>Chargement...</li>";
+            
+            try {
+                // On récupère tout et on trie (Firestore limite les tris complexes en mode simple)
+                const q = query(collection(db, "scores"), where("name", "==", name), orderBy("points", "desc"), limit(10));
+                const snap = await getDocs(q);
+                
+                list.innerHTML = "";
+                if(snap.empty) {
+                    list.innerHTML = "<li style='color:#555'>Aucun record</li>";
+                    return;
+                }
+
+                let rank = 1;
+                snap.forEach(doc => {
+                    const s = doc.data();
+                    const li = document.createElement('li');
+                    li.innerHTML = `<span>#${rank}</span> <span style="color:#00d4ff">${s.points}</span>`;
+                    list.appendChild(li);
+                    rank++;
+                });
+            } catch (e) { 
+                console.error(e); 
+                list.innerHTML = "<li>Erreur chargement</li>";
+            }
+        };
+
+        // Classement Global Live (Top 10 Général)
         const q = query(collection(db, "scores"), orderBy("points", "desc"), limit(10));
         onSnapshot(q, (snapshot) => {
             const list = document.getElementById('score-list');
@@ -85,55 +114,41 @@
             display: flex; justify-content: center; align-items: center; user-select: none;
         }
         
-        #game-container { display: flex; gap: 20px; align-items: flex-start; }
+        /* Layout Principal : 3 colonnes */
+        #main-layout { display: flex; gap: 20px; align-items: flex-start; height: 85vh; }
 
-        /* Colonne de gauche (Jeu + Skins) */
+        /* Colonne Jeu (Gauche) */
         #game-column { display: flex; flex-direction: column; gap: 15px; }
         
         #canvas-wrapper {
             position: relative; border: 2px solid #333; background: #000;
-            width: 800px; height: 550px; border-radius: 12px; /* Hauteur réduite pour laisser place aux skins */
+            width: 800px; height: 550px; border-radius: 12px;
             box-shadow: 0 0 50px rgba(0, 212, 255, 0.1);
         }
         canvas { display: block; border-radius: 12px; width: 100%; height: 100%; }
 
-        /* Barre des Skins (Nouvel emplacement) */
+        /* Barres Latérales (Droite) */
+        .sidebar {
+            width: 250px; height: 100%; background: rgba(15, 15, 25, 0.9);
+            border: 1px solid #00d4ff; border-radius: 12px; padding: 20px;
+            display: flex; flex-direction: column;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+        h2 { text-align: center; color: #00d4ff; border-bottom: 2px solid #00d4ff33; padding-bottom: 10px; margin-top: 0; font-size: 18px; }
+        ul { list-style: none; padding: 0; overflow-y: auto; flex-grow: 1; }
+        li { padding: 8px; border-bottom: 1px solid #ffffff10; display: flex; justify-content: space-between; font-size: 14px; }
+
+        /* Skins Panel */
         #skins-panel {
             width: 800px; padding: 15px; background: rgba(15, 15, 25, 0.8);
             border: 1px solid #333; border-radius: 12px;
             display: flex; justify-content: space-between; align-items: center;
         }
 
-        #sidebar {
-            width: 300px; height: 635px; background: rgba(15, 15, 25, 0.9);
-            border: 1px solid #00d4ff; border-radius: 12px; padding: 20px;
-            display: flex; flex-direction: column;
-        }
-        h2 { text-align: center; color: #00d4ff; border-bottom: 2px solid #00d4ff33; padding-bottom: 10px; margin-top: 0; }
-        ul { list-style: none; padding: 0; overflow-y: auto; flex-grow: 1; }
-        li { padding: 10px; border-bottom: 1px solid #ffffff10; display: flex; justify-content: space-between; }
-
-        .overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.95); z-index: 20; display: flex;
-            flex-direction: column; justify-content: center; align-items: center;
-            border-radius: 12px;
-        }
-
-        input {
-            padding: 15px; font-size: 20px; background: #0f0f1e; border: 2px solid #00d4ff;
-            color: white; text-align: center; font-family: inherit; margin-bottom: 20px;
-            border-radius: 8px; outline: none; width: 280px;
-        }
-        .btn {
-            padding: 15px 50px; font-size: 22px; background: linear-gradient(90deg, #00d4ff, #005bea);
-            border: none; color: white; font-family: inherit; font-weight: bold;
-            cursor: pointer; border-radius: 50px; transition: 0.2s;
-        }
-        .btn:hover { transform: scale(1.05); box-shadow: 0 0 20px #00d4ff; }
-
-        /* SKINS SELECTOR */
-        .skins-container { display: flex; gap: 15px; flex-grow: 1; justify-content: center; }
+        .skins-container { display: flex; gap: 20px; flex-grow: 1; justify-content: center; }
+        
+        .skin-item { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+        
         .skin-btn {
             width: 40px; height: 40px; border-radius: 50%; border: 3px solid #333;
             cursor: pointer; position: relative; transition: 0.2s;
@@ -141,29 +156,51 @@
         .skin-btn.locked { opacity: 0.3; cursor: not-allowed; border-color: #333; }
         .skin-btn.locked::after { content: '🔒'; position: absolute; top: 8px; left: 8px; font-size: 14px; }
         .skin-btn.selected { border-color: white; transform: scale(1.2); box-shadow: 0 0 15px white; }
-        .skin-info { color: #888; font-size: 12px; width: 150px; }
+        
+        .skin-score-req { font-size: 10px; color: #888; font-weight: bold; }
 
-        /* Score HUD */
+        /* Pop-up Encouragement */
+        #encouragement-popup {
+            position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 40px; font-weight: bold; color: #ffd700;
+            text-shadow: 0 0 30px #ffd700;
+            opacity: 0; pointer-events: none; transition: opacity 0.5s;
+            text-align: center; z-index: 15;
+        }
+        #encouragement-popup.show { opacity: 1; animation: popScale 0.5s ease-out; }
+        @keyframes popScale { 0% { transform: translate(-50%, -50%) scale(0.5); } 100% { transform: translate(-50%, -50%) scale(1.2); } }
+
+        /* Overlay Ecrans */
+        .overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95); z-index: 20; display: flex;
+            flex-direction: column; justify-content: center; align-items: center;
+            border-radius: 12px;
+        }
+        input { padding: 15px; font-size: 20px; background: #0f0f1e; border: 2px solid #00d4ff; color: white; text-align: center; border-radius: 8px; outline: none; margin-bottom: 20px; }
+        .btn { padding: 15px 50px; font-size: 22px; background: linear-gradient(90deg, #00d4ff, #005bea); border: none; color: white; font-weight: bold; cursor: pointer; border-radius: 50px; }
+
         #liveScore { position: absolute; top: 20px; left: 20px; font-size: 32px; font-weight: bold; color: #ffffff40; pointer-events: none; }
     </style>
 </head>
 <body>
 
-    <div id="game-container">
+    <div id="main-layout">
         
         <div id="game-column">
             <div id="canvas-wrapper">
                 
+                <div id="encouragement-popup">NOUVEAU RECORD !<br>👑</div>
+
                 <div id="start-screen" class="overlay">
                     <h1 style="color:#00d4ff; text-shadow:0 0 20px #00d4ff; margin-bottom: 5px;">JEU KEVIN</h1>
-                    <p style="color:#888; font-size: 12px; margin-bottom: 30px;">MEILLEUR SCORE LOCAL : <span id="bestScoreDisplay" style="color:white">0</span></p>
-                    
+                    <p style="color:#888; font-size: 12px; margin-bottom: 30px;">CONNECTÉ AU CLOUD</p>
                     <input type="text" id="playerNameInput" placeholder="TON PSEUDO" maxlength="12">
                     <button class="btn" onclick="startGame()">JOUER</button>
                 </div>
 
                 <div id="game-over-screen" class="overlay" style="display:none;">
-                    <h2 style="color:#ff6b6b; font-size:48px; margin-bottom:10px;">PERDU</h2>
+                    <h2 style="color:#ff6b6b; font-size:48px;">PERDU</h2>
                     <p style="font-size:24px; margin-bottom:30px;">Score : <span id="finalScore" style="color:#00d4ff">0</span></p>
                     <button class="btn" onclick="returnToMenu()">MENU</button>
                 </div>
@@ -173,16 +210,21 @@
             </div>
 
             <div id="skins-panel">
-                <div class="skin-info">CHOISIS TA COULEUR :<br><span style="font-size:10px; color:#555">Débloque-les en jouant</span></div>
-                <div class="skins-container" id="skinsContainer">
-                    </div>
+                <div style="color:#888; font-size:12px; width:100px;">COULEURS :<br>Score requis</div>
+                <div class="skins-container" id="skinsContainer"></div>
             </div>
         </div>
 
-        <div id="sidebar">
-            <h2>TOP 10</h2>
+        <div class="sidebar">
+            <h2>TOP 10 MONDE</h2>
             <ul id="score-list"><li>Chargement...</li></ul>
         </div>
+
+        <div class="sidebar" style="border-color: #ff6b6b;">
+            <h2 style="color: #ff6b6b; border-color: #ff6b6b33;">MES RECORDS</h2>
+            <ul id="personal-list"><li style="color:#555">Entre ton pseudo</li></ul>
+        </div>
+
     </div>
 
     <script>
@@ -191,9 +233,8 @@
         const ctx = canvas.getContext('2d');
         const skinsContainer = document.getElementById('skinsContainer');
         const nameInput = document.getElementById('playerNameInput');
-        const bestScoreDisplay = document.getElementById('bestScoreDisplay');
+        const popup = document.getElementById('encouragement-popup');
 
-        // Définition des skins
         const SKINS = [
             { score: 0, color: '#ff6b6b', name: 'ROUGE' },
             { score: 10, color: '#2ecc71', name: 'VERT' },
@@ -207,73 +248,91 @@
             running: false,
             score: 0,
             pseudo: localStorage.getItem('kevin_pseudo') || "Anonyme",
-            bestScore: parseInt(localStorage.getItem('kevin_best_local')) || 0,
+            bestScore: 0, // Sera mis à jour depuis le cloud
             selectedColor: localStorage.getItem('kevin_color') || '#ff6b6b',
-            hue: 0
+            hue: 0,
+            spacePressed: false,
+            recordBroken: false
         };
 
         let ball = { x: 400, y: 300, dx: 0, dy: 0, speed: 6, radius: 8 };
-        let paddle = { x: 340, y: 510, width: 120, height: 15 }; // Position ajustée
+        let paddle = { x: 340, y: 510, width: 120, height: 15 };
         let particles = [];
 
-        // --- GESTION SOURIS (Sur toute la fenêtre) ---
+        // --- GESTION INPUT & CLOUD ---
+        
+        // 1. Souris (Ne sort pas du jeu)
         window.addEventListener('mousemove', (e) => {
             if(!state.running) return;
             const rect = canvas.getBoundingClientRect();
             const scaleX = canvas.width / rect.width;
             let relativeX = (e.clientX - rect.left) * scaleX;
             paddle.x = relativeX - (paddle.width / 2);
+            // Bornes
             if(paddle.x < 0) paddle.x = 0;
             if(paddle.x > canvas.width - paddle.width) paddle.x = canvas.width - paddle.width;
         });
 
-        // --- INITIALISATION MENU ---
+        // 2. Barre Espace (Effet Halo)
+        window.addEventListener('keydown', (e) => { if(e.code === 'Space') state.spacePressed = true; });
+        window.addEventListener('keyup', (e) => { if(e.code === 'Space') state.spacePressed = false; });
+
+        // 3. Gestion Pseudo & Cloud
         function initMenu() {
             nameInput.value = state.pseudo;
-            bestScoreDisplay.innerText = state.bestScore;
+            checkOnlineData(); // Charger les données dès l'arrivée
             renderSkins();
         }
 
-        // Mise à jour dynamique des skins lors de la frappe du pseudo
-        nameInput.addEventListener('input', async () => {
-            state.pseudo = nameInput.value.trim();
-        });
-
-        // Vérification online au changement de focus ou lancement
-        async function checkOnlineScore() {
+        // Vérifier le cloud quand on quitte le champ ou qu'on tape
+        nameInput.addEventListener('blur', checkOnlineData);
+        
+        async function checkOnlineData() {
             const name = nameInput.value.trim();
-            if(name && window.fetchUserBestScore) {
+            if(!name) return;
+            
+            // 1. Chercher le meilleur score global
+            if(window.fetchUserBestScore) {
                 const onlineBest = await window.fetchUserBestScore(name);
                 if(onlineBest > state.bestScore) {
                     state.bestScore = onlineBest;
-                    localStorage.setItem('kevin_best_local', onlineBest);
-                    bestScoreDisplay.innerText = onlineBest;
                     renderSkins();
                 }
             }
+            // 2. Chercher la liste des records perso
+            if(window.fetchPersonalRecords) {
+                await window.fetchPersonalRecords(name);
+            }
         }
-        nameInput.addEventListener('blur', checkOnlineScore);
 
         function renderSkins() {
             skinsContainer.innerHTML = '';
             SKINS.forEach(skin => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'skin-item';
+
                 const btn = document.createElement('div');
                 btn.className = 'skin-btn';
                 
-                if(skin.color === 'rainbow') {
-                    btn.style.background = 'linear-gradient(45deg, red, orange, yellow, green, blue, violet)';
-                } else {
-                    btn.style.background = skin.color;
-                }
+                if(skin.color === 'rainbow') btn.style.background = 'linear-gradient(45deg, red, violet)';
+                else btn.style.background = skin.color;
 
                 if(state.bestScore < skin.score) {
                     btn.classList.add('locked');
-                    btn.title = `Score requis : ${skin.score}`;
+                    btn.title = `Débloquer à ${skin.score}`;
                 } else {
                     btn.onclick = () => selectSkin(skin.color);
                     if(state.selectedColor === skin.color) btn.classList.add('selected');
                 }
-                skinsContainer.appendChild(btn);
+
+                // Texte du score requis
+                const scoreTxt = document.createElement('div');
+                scoreTxt.className = 'skin-score-req';
+                scoreTxt.innerText = skin.score + " pts";
+
+                wrapper.appendChild(btn);
+                wrapper.appendChild(scoreTxt);
+                skinsContainer.appendChild(wrapper);
             });
         }
 
@@ -283,14 +342,13 @@
             renderSkins();
         }
 
-        // --- MOTEUR DE JEU ---
+        // --- GAME LOOP ---
         async function startGame() {
             const name = nameInput.value.trim() || "Anonyme";
             state.pseudo = name;
             localStorage.setItem('kevin_pseudo', name);
             
-            // Dernière vérif avant de lancer
-            await checkOnlineScore();
+            await checkOnlineData(); // Sûreté
 
             document.getElementById('start-screen').style.display = 'none';
             document.getElementById('game-over-screen').style.display = 'none';
@@ -302,7 +360,10 @@
 
         function resetGame() {
             state.score = 0;
+            state.recordBroken = false;
             document.getElementById('liveScore').innerText = '0';
+            popup.classList.remove('show');
+            
             ball.x = canvas.width/2; ball.y = canvas.height/3;
             ball.speed = 6;
             let angle = Math.random() * Math.PI/2 + Math.PI/4;
@@ -315,6 +376,13 @@
         function update() {
             state.hue = (state.hue + 2) % 360;
 
+            // Encouragement Pop-up
+            if(!state.recordBroken && state.score > state.bestScore && state.bestScore > 0) {
+                state.recordBroken = true;
+                showPopup("NOUVEAU RECORD !");
+            }
+
+            // Particules
             for(let i=particles.length-1; i>=0; i--) {
                 particles[i].life -= 0.04;
                 particles[i].x += particles[i].sx;
@@ -322,12 +390,13 @@
                 if(particles[i].life <= 0) particles.splice(i,1);
             }
 
+            // Physique
             ball.x += ball.dx; ball.y += ball.dy;
-
             if(ball.x < ball.radius) { ball.x=ball.radius; ball.dx*=-1; }
             if(ball.x > canvas.width-ball.radius) { ball.x=canvas.width-ball.radius; ball.dx*=-1; }
             if(ball.y < ball.radius) { ball.y=ball.radius; ball.dy*=-1; }
 
+            // Collision Raquette
             if(ball.y + ball.radius >= paddle.y && ball.y - ball.radius <= paddle.y + paddle.height && ball.dy > 0) {
                 if(ball.x >= paddle.x && ball.x <= paddle.x + paddle.width) {
                     let hit = (ball.x - (paddle.x + paddle.width/2)) / (paddle.width/2);
@@ -347,25 +416,31 @@
         }
 
         function draw() {
-            ctx.fillStyle = 'rgba(0,0,0,0.25)';
-            ctx.fillRect(0,0,canvas.width, canvas.height);
-
+            ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(0,0,canvas.width, canvas.height);
+            
             const currentColor = getCurrentColor();
 
+            // Particules
             particles.forEach(p => {
-                ctx.globalAlpha = p.life;
-                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.life; ctx.fillStyle = p.color;
                 ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill();
             });
             ctx.globalAlpha = 1;
 
+            // Raquette (avec effet Halo Espace)
             ctx.fillStyle = '#00d4ff';
-            ctx.shadowBlur = 15; ctx.shadowColor = '#00d4ff';
+            if(state.spacePressed) {
+                ctx.shadowBlur = 30; ctx.shadowColor = '#00d4ff'; // Gros halo
+            } else {
+                ctx.shadowBlur = 10; ctx.shadowColor = '#00d4ff'; // Petit halo normal
+            }
             ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
 
+            // Balle
             ctx.fillStyle = currentColor;
-            ctx.shadowColor = currentColor;
+            ctx.shadowColor = currentColor; ctx.shadowBlur = 15;
             ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI*2); ctx.fill();
+            
             ctx.shadowBlur = 0;
         }
 
@@ -384,22 +459,24 @@
             }
         }
 
+        function showPopup(text) {
+            popup.innerHTML = text + "<br>👑";
+            popup.classList.add('show');
+            setTimeout(() => popup.classList.remove('show'), 3000);
+        }
+
         function gameLoop() {
-            if(state.running) {
-                update();
-                draw();
-                requestAnimationFrame(gameLoop);
-            }
+            if(state.running) { update(); draw(); requestAnimationFrame(gameLoop); }
         }
 
         function endGame() {
             state.running = false;
-            if(state.score > state.bestScore) {
-                state.bestScore = state.score;
-                localStorage.setItem('kevin_best_local', state.score);
-                renderSkins(); // Débloque les skins instantanément
-            }
+            if(state.score > state.bestScore) state.bestScore = state.score;
+            
             if(window.saveScoreOnline) window.saveScoreOnline(state.pseudo, state.score);
+            
+            // Recharger les données pour mettre à jour les colonnes
+            setTimeout(() => checkOnlineData(), 1000);
 
             document.getElementById('finalScore').innerText = state.score;
             document.getElementById('game-over-screen').style.display = 'flex';
