@@ -1,17 +1,16 @@
 <!doctype html>
 <html lang="fr">
- <head>
+<head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Jeu Kevin</title>
-  <script src="/_sdk/element_sdk.js"></script>
   <style>
     body {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
       width: 100%;
-      height: 100%;
+      height: 100vh; /* Utilisation de vh pour s'assurer que ça prend l'écran */
       background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
       font-family: 'Segoe UI', Arial, sans-serif;
       display: flex;
@@ -71,7 +70,7 @@
       border-radius: 10px;
       box-shadow: 0 0 30px rgba(0, 212, 255, 0.3);
       overflow: hidden;
-      cursor: default;
+      cursor: none; /* Cache le curseur pour plus d'immersion */
     }
 
     .ball {
@@ -81,6 +80,7 @@
       background: #ff6b6b;
       border-radius: 50%;
       box-shadow: 0 0 15px rgba(255, 107, 107, 0.8);
+      transform: translate(-50%, -50%); /* Pour centrer la balle sur ses coordonnées */
     }
 
     .paddle {
@@ -105,6 +105,7 @@
       justify-content: center;
       align-items: center;
       gap: 20px;
+      cursor: default; /* Réaffiche le curseur */
     }
 
     .game-over-overlay.active {
@@ -153,67 +154,47 @@
         width: 90%;
         height: 60%;
       }
-
       .title {
         font-size: 32px;
       }
     }
   </style>
-  <style>@view-transition { navigation: auto; }</style>
-  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
-  <script src="https://cdn.tailwindcss.com" type="text/javascript"></script>
- </head>
- <body>
+</head>
+<body>
   <div class="game-wrapper">
-   <h1 class="title" id="gameTitle">Jeu Kevin</h1>
-   <div class="score-container">
-    <div class="score-item">
-     <div class="score-label">
-      Score
-     </div>
-     <div class="score-value" id="currentScore">
-      0
-     </div>
+    <h1 class="title" id="gameTitle">Jeu Kevin</h1>
+    <div class="score-container">
+      <div class="score-item">
+        <div class="score-label">Score</div>
+        <div class="score-value" id="currentScore">0</div>
+      </div>
+      <div class="score-item">
+        <div class="score-label">Meilleur</div>
+        <div class="score-value" id="bestScore">0</div>
+      </div>
     </div>
-    <div class="score-item">
-     <div class="score-label">
-      Meilleur
-     </div>
-     <div class="score-value" id="bestScore">
-      0
-     </div>
+    <div class="game-canvas" id="gameCanvas">
+      <div class="ball" id="ball"></div>
+      <div class="paddle" id="paddle"></div>
+      <div class="game-over-overlay" id="gameOverOverlay">
+        <div class="game-over-text">Game Over!</div>
+        <div class="final-score-text">Score: <span id="finalScore">0</span></div>
+        <button class="replay-button" id="replayButton">Rejouer</button>
+      </div>
     </div>
-   </div>
-   <div class="game-canvas" id="gameCanvas">
-    <div class="ball" id="ball"></div>
-    <div class="paddle" id="paddle"></div>
-    <div class="game-over-overlay" id="gameOverOverlay">
-     <div class="game-over-text">
-      Game Over!
-     </div>
-     <div class="final-score-text">
-      Score: <span id="finalScore">0</span>
-     </div><button class="replay-button" id="replayButton">Rejouer</button>
-    </div>
-   </div>
-   <div class="instructions">
-    Déplacez votre souris pour contrôler la barre
-   </div>
+    <div class="instructions">Déplacez votre souris pour contrôler la barre</div>
   </div>
+
   <script>
+    // Configuration de base
     const defaultConfig = {
       game_title: "Jeu Kevin",
-      play_button_text: "Rejouer",
       primary_color: "#00d4ff",
       secondary_color: "#ff6b6b",
       background_color: "#1a1a2e",
       text_color: "#ffffff",
-      surface_color: "#0f0f1e",
-      font_family: "Segoe UI",
-      font_size: 16
+      surface_color: "#0f0f1e"
     };
-
-    let config = {};
 
     const gameCanvas = document.getElementById('gameCanvas');
     const ball = document.getElementById('ball');
@@ -223,7 +204,6 @@
     const gameOverOverlay = document.getElementById('gameOverOverlay');
     const finalScoreEl = document.getElementById('finalScore');
     const replayButton = document.getElementById('replayButton');
-    const gameTitle = document.getElementById('gameTitle');
 
     let ballX = 300;
     let ballY = 200;
@@ -237,9 +217,11 @@
 
     bestScoreEl.textContent = bestScore;
 
+    // Gestion de la souris
     gameCanvas.addEventListener('mousemove', (e) => {
       const rect = gameCanvas.getBoundingClientRect();
       const mouseX = e.clientX - rect.left;
+      // 100 est la largeur du paddle, on centre donc avec -50
       paddleX = Math.max(0, Math.min(mouseX - 50, gameCanvas.offsetWidth - 100));
       paddle.style.left = paddleX + 'px';
     });
@@ -250,42 +232,50 @@
       ballX += ballSpeedX;
       ballY += ballSpeedY;
 
+      // Rebond gauche/droite
       if (ballX <= 0 || ballX >= gameCanvas.offsetWidth - 20) {
         ballSpeedX = -ballSpeedX;
       }
 
+      // Rebond haut
       if (ballY <= 0) {
         ballSpeedY = -ballSpeedY;
       }
 
+      // Logique de collision et rebond
       const ballRadius = 10;
       const ballCenterX = ballX + ballRadius;
       const ballCenterY = ballY + ballRadius;
-      const paddleTop = gameCanvas.offsetHeight - 25;
-      const paddleBottom = gameCanvas.offsetHeight - 10;
-      const paddleLeft = paddleX;
-      const paddleRight = paddleX + 100;
-
+      
+      const paddleWidth = 100;
+      const paddleHeight = 15;
+      const paddleTop = gameCanvas.offsetHeight - (10 + paddleHeight); // 10 est le bottom css
+      
+      // Collision Paddle
       if (ballCenterY + ballRadius >= paddleTop && 
-          ballCenterY - ballRadius <= paddleBottom &&
-          ballCenterX >= paddleLeft && 
-          ballCenterX <= paddleRight &&
+          ballY < paddleTop + paddleHeight && // Empêche de traverser
+          ballCenterX >= paddleX && 
+          ballCenterX <= paddleX + paddleWidth &&
           ballSpeedY > 0) {
         
-        ballY = paddleTop - 20;
+        // On remonte la balle pour éviter qu'elle colle
+        ballY = paddleTop - 20; 
         ballSpeedY = -Math.abs(ballSpeedY);
         
         score++;
         currentScoreEl.textContent = score;
         
-        ballSpeedX *= 1.01;
-        ballSpeedY *= 1.01;
+        // Accélération légère
+        ballSpeedX *= 1.05;
+        ballSpeedY *= 1.05;
         
-        const hitPosition = (ballCenterX - paddleLeft) / 100;
-        const angle = (hitPosition - 0.5) * 0.3;
-        ballSpeedX += angle * Math.abs(ballSpeedY);
+        // Effet d'angle selon l'endroit où on tape la barre
+        const hitPosition = (ballCenterX - paddleX) / paddleWidth;
+        const angle = (hitPosition - 0.5) * 6; // Facteur d'angle ajusté
+        ballSpeedX += angle;
       }
 
+      // Perdu (bas de l'écran)
       if (ballY >= gameCanvas.offsetHeight) {
         endGame();
         return;
@@ -308,6 +298,7 @@
       }
       
       gameOverOverlay.classList.add('active');
+      gameCanvas.style.cursor = 'default'; // Réaffiche le curseur
     }
 
     function resetGame() {
@@ -315,12 +306,16 @@
       ballY = 200;
       ballSpeedX = 3;
       ballSpeedY = 3;
+      // On reset la vitesse X aléatoirement gauche ou droite pour varier
+      if(Math.random() > 0.5) ballSpeedX = -3;
+
       paddleX = 250;
       score = 0;
       isGameRunning = true;
       
       currentScoreEl.textContent = score;
       gameOverOverlay.classList.remove('active');
+      gameCanvas.style.cursor = 'none'; // Cache le curseur
       
       ball.style.left = ballX + 'px';
       ball.style.top = ballY + 'px';
@@ -331,141 +326,12 @@
 
     replayButton.addEventListener('click', resetGame);
 
-    async function onConfigChange(newConfig) {
-      const titleElement = document.getElementById('gameTitle');
-      const replayBtn = document.getElementById('replayButton');
-      const primaryColor = newConfig.primary_color || defaultConfig.primary_color;
-      const secondaryColor = newConfig.secondary_color || defaultConfig.secondary_color;
-      const backgroundColor = newConfig.background_color || defaultConfig.background_color;
-      const textColor = newConfig.text_color || defaultConfig.text_color;
-      const surfaceColor = newConfig.surface_color || defaultConfig.surface_color;
-      const customFont = newConfig.font_family || defaultConfig.font_family;
-      const baseFontStack = 'Arial, sans-serif';
-      const baseSize = newConfig.font_size || defaultConfig.font_size;
-
-      titleElement.textContent = newConfig.game_title || defaultConfig.game_title;
-      replayBtn.textContent = newConfig.play_button_text || defaultConfig.play_button_text;
-
-      document.body.style.background = `linear-gradient(135deg, ${backgroundColor} 0%, ${backgroundColor} 100%)`;
-      document.body.style.fontFamily = `${customFont}, ${baseFontStack}`;
-
-      titleElement.style.color = primaryColor;
-      titleElement.style.textShadow = `0 0 20px ${primaryColor}80`;
-      titleElement.style.fontFamily = `${customFont}, ${baseFontStack}`;
-      titleElement.style.fontSize = `${baseSize * 3}px`;
-
-      gameCanvas.style.background = surfaceColor;
-      gameCanvas.style.borderColor = primaryColor;
-      gameCanvas.style.boxShadow = `0 0 30px ${primaryColor}4D`;
-
-      paddle.style.background = primaryColor;
-      paddle.style.boxShadow = `0 0 15px ${primaryColor}CC`;
-
-      ball.style.background = secondaryColor;
-      ball.style.boxShadow = `0 0 15px ${secondaryColor}CC`;
-
-      replayBtn.style.background = primaryColor;
-      replayBtn.style.color = surfaceColor;
-      replayBtn.style.boxShadow = `0 0 20px ${primaryColor}80`;
-      replayBtn.style.fontFamily = `${customFont}, ${baseFontStack}`;
-      replayBtn.style.fontSize = `${baseSize * 1.25}px`;
-
-      const scoreValues = document.querySelectorAll('.score-value');
-      scoreValues.forEach(el => {
-        el.style.color = textColor;
-        el.style.fontFamily = `${customFont}, ${baseFontStack}`;
-        el.style.fontSize = `${baseSize * 2}px`;
-      });
-
-      const scoreLabels = document.querySelectorAll('.score-label');
-      scoreLabels.forEach(el => {
-        el.style.fontFamily = `${customFont}, ${baseFontStack}`;
-        el.style.fontSize = `${baseSize * 0.875}px`;
-      });
-
-      document.querySelector('.instructions').style.fontFamily = `${customFont}, ${baseFontStack}`;
-      document.querySelector('.instructions').style.fontSize = `${baseSize}px`;
-
-      const gameOverText = document.querySelector('.game-over-text');
-      gameOverText.style.color = secondaryColor;
-      gameOverText.style.textShadow = `0 0 20px ${secondaryColor}80`;
-      gameOverText.style.fontFamily = `${customFont}, ${baseFontStack}`;
-      gameOverText.style.fontSize = `${baseSize * 3}px`;
-
-      const finalScoreText = document.querySelector('.final-score-text');
-      finalScoreText.style.color = textColor;
-      finalScoreText.style.fontFamily = `${customFont}, ${baseFontStack}`;
-      finalScoreText.style.fontSize = `${baseSize * 1.5}px`;
-    }
-
-    if (window.elementSdk) {
-      window.elementSdk.init({
-        defaultConfig,
-        onConfigChange,
-        mapToCapabilities: (config) => ({
-          recolorables: [
-            {
-              get: () => config.background_color || defaultConfig.background_color,
-              set: (value) => {
-                config.background_color = value;
-                window.elementSdk.setConfig({ background_color: value });
-              }
-            },
-            {
-              get: () => config.surface_color || defaultConfig.surface_color,
-              set: (value) => {
-                config.surface_color = value;
-                window.elementSdk.setConfig({ surface_color: value });
-              }
-            },
-            {
-              get: () => config.text_color || defaultConfig.text_color,
-              set: (value) => {
-                config.text_color = value;
-                window.elementSdk.setConfig({ text_color: value });
-              }
-            },
-            {
-              get: () => config.primary_color || defaultConfig.primary_color,
-              set: (value) => {
-                config.primary_color = value;
-                window.elementSdk.setConfig({ primary_color: value });
-              }
-            },
-            {
-              get: () => config.secondary_color || defaultConfig.secondary_color,
-              set: (value) => {
-                config.secondary_color = value;
-                window.elementSdk.setConfig({ secondary_color: value });
-              }
-            }
-          ],
-          borderables: [],
-          fontEditable: {
-            get: () => config.font_family || defaultConfig.font_family,
-            set: (value) => {
-              config.font_family = value;
-              window.elementSdk.setConfig({ font_family: value });
-            }
-          },
-          fontSizeable: {
-            get: () => config.font_size || defaultConfig.font_size,
-            set: (value) => {
-              config.font_size = value;
-              window.elementSdk.setConfig({ font_size: value });
-            }
-          }
-        }),
-        mapToEditPanelValues: (config) => new Map([
-          ["game_title", config.game_title || defaultConfig.game_title],
-          ["play_button_text", config.play_button_text || defaultConfig.play_button_text]
-        ])
-      });
-
-      config = window.elementSdk.config;
-    }
-
+    // Initialisation
+    ball.style.left = ballX + 'px';
+    ball.style.top = ballY + 'px';
+    paddle.style.left = paddleX + 'px';
     gameLoop();
+
   </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9a40024c86df00ce',t:'MTc2NDA2MTc4NS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</body>
 </html>
