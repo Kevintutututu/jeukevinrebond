@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jeu Kevin - Arcade V5 Ultimate</title>
+    <title>Jeu Kevin - Arcade V6 Ultimate</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
     
     <script type="module">
+        // On importe setDoc, doc et getDoc pour gérer le classement unique
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, query, orderBy, limit, onSnapshot, where, getDocs } 
+        import { getFirestore, collection, addDoc, setDoc, doc, getDoc, query, orderBy, limit, onSnapshot, where, getDocs } 
         from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         // ==================================================================
@@ -27,64 +28,98 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // Sauvegarder le score avec la DATE
+        // --------------------------------------------------------------
+        // NOUVELLE LOGIQUE DE SAUVEGARDE
+        // --------------------------------------------------------------
         window.saveScoreOnline = async (name, points) => {
             if(!name || points === 0) return;
+            const cleanName = name.trim().toUpperCase();
+            const now = Date.now();
+
             try {
-                // On utilise Date.now() pour avoir un timestamp simple et fiable
-                await addDoc(collection(db, "scores"), {
-                    name: name.trim().toUpperCase(),
+                // 1. Enregistrer dans l'HISTORIQUE (pour les "5 dernières parties")
+                // On utilise une collection "history" pour ne pas mélanger
+                await addDoc(collection(db, "history"), {
+                    name: cleanName,
                     points: points,
-                    date: Date.now() 
+                    date: now
                 });
-            } catch (e) { console.error(e); }
+
+                // 2. Mettre à jour le CLASSEMENT UNIQUE (pour le "Top 10")
+                // On utilise le pseudo comme ID du document pour garantir l'unicité
+                const userRef = doc(db, "best_scores", cleanName);
+                const userSnap = await getDoc(userRef);
+
+                // Si le joueur n'existe pas OU s'il a battu son record
+                if (!userSnap.exists() || points > userSnap.data().points) {
+                    await setDoc(userRef, {
+                        name: cleanName,
+                        points: points,
+                        date: now
+                    });
+                    console.log("Nouveau record personnel sauvegardé !");
+                }
+
+            } catch (e) { console.error("Erreur Save:", e); }
         };
 
-        // Récupérer le meilleur score
+        // Récupérer le meilleur score personnel (depuis la table unique)
         window.fetchUserBestScore = async (name) => {
             if(!name) return 0;
             const cleanName = name.trim().toUpperCase();
             try {
-                const q = query(collection(db, "scores"), where("name", "==", cleanName));
-                const snap = await getDocs(q);
-                if (snap.empty) return 0;
-                let max = 0;
-                snap.forEach(doc => {
-                    const p = doc.data().points;
-                    if(p > max) max = p;
-                });
-                return max;
+                const userRef = doc(db, "best_scores", cleanName);
+                const userSnap = await getDoc(userRef);
+                if (userSnap.exists()) return userSnap.data().points;
             } catch (e) { return 0; }
+            return 0;
         };
 
-        // Historique Perso
+        // Récupérer les records personnels (Depuis l'historique)
         window.fetchPersonalRecords = async (name) => {
             const list = document.getElementById('personal-list');
             if(!list || !name) return;
-            list.innerHTML = "<li style='justify-content:center; color:#888;'><i>Chargement...</i></li>";
+            
+            list.innerHTML = "<li style='justify-content:center; color:#888;'><i>Recherche...</i></li>";
             const cleanName = name.trim().toUpperCase();
+
             try {
-                const q = query(collection(db, "scores"), where("name", "==", cleanName));
-                const snap = await getDocs(q);
+                // On cherche dans l'historique complet
+                const q = query(collection(db, "history"), where("name", "==", cleanName), orderBy("points", "desc"), limit(10));
+                // Note: Si l'index manque, le tri peut échouer, on sécurise en triant en JS si besoin
+                // Pour la version simple, on va tenter le tri JS pour éviter les erreurs d'index Firebase
+                const qSimple = query(collection(db, "history"), where("name", "==", cleanName));
+                const snap = await getDocs(qSimple);
+                
                 if(snap.empty) {
                     list.innerHTML = "<li style='justify-content:center; color:#555;'>Aucun record</li>";
                     return;
                 }
+
                 let scores = [];
                 snap.forEach(doc => scores.push(doc.data().points));
-                scores.sort((a, b) => b - a);
-                scores = scores.slice(0, 10);
+                scores.sort((a, b) => b - a); // Tri décroissant
+                scores = scores.slice(0, 10); // Top 10
+
                 list.innerHTML = "";
                 scores.forEach((s, index) => {
                     const li = document.createElement('li');
                     li.innerHTML = `<span>#${index+1}</span> <span style="color:#00d4ff">${s}</span>`;
                     list.appendChild(li);
                 });
-            } catch (e) { list.innerHTML = "<li>Erreur</li>"; }
+
+            } catch (e) { 
+                console.error(e);
+                list.innerHTML = "<li>Erreur</li>";
+            }
         };
 
-        // Top 10 Mondial
-        const qTop = query(collection(db, "scores"), orderBy("points", "desc"), limit(10));
+        // --------------------------------------------------------------
+        // ECOUTEURS TEMPS REEL (LIVE)
+        // --------------------------------------------------------------
+
+        // 1. TOP 10 MONDE (Basé sur les meilleurs scores uniques)
+        const qTop = query(collection(db, "best_scores"), orderBy("points", "desc"), limit(10));
         onSnapshot(qTop, (snapshot) => {
             const list = document.getElementById('score-list');
             if(!list) return;
@@ -105,12 +140,11 @@
                 list.appendChild(li);
                 rank++;
             });
+            if(list.innerHTML === "") list.innerHTML = "<li style='justify-content:center; color:#555;'>Vide</li>";
         });
 
-        // 5 Dernières Parties (Correction de la requête)
-        // Note : Si ça ne s'affiche pas, c'est que les anciennes parties n'ont pas de champ "date".
-        // Joue une nouvelle partie pour voir le résultat apparaître.
-        const qRecent = query(collection(db, "scores"), orderBy("date", "desc"), limit(5));
+        // 2. 5 DERNIERES PARTIES (Basé sur l'historique, trié par date)
+        const qRecent = query(collection(db, "history"), orderBy("date", "desc"), limit(5));
         onSnapshot(qRecent, (snapshot) => {
             const list = document.getElementById('recent-list');
             if(!list) return;
@@ -118,14 +152,14 @@
             snapshot.forEach((doc) => {
                 const s = doc.data();
                 const li = document.createElement('li');
-                li.style.borderColor = "#ff475733"; // Bordure rouge légère
+                li.style.borderColor = "#ff475733"; 
                 li.innerHTML = `
                     <span style="color:#aaa; font-size:12px;">${s.name}</span>
-                    <span style="color:#ff4757; font-weight:bold;">${s.points}</span>
+                    <span style="color:#ff4757; font-weight:bold;">${s.points} pts</span>
                 `;
                 list.appendChild(li);
             });
-            if(list.innerHTML === "") list.innerHTML = "<li style='text-align:center; color:#555'>Aucune donnée récente</li>";
+            if(list.innerHTML === "") list.innerHTML = "<li style='text-align:center; color:#555'>En attente de jeu...</li>";
         });
     </script>
 
@@ -149,7 +183,7 @@
 
         /* Colonnes latérales */
         .sidebar-column {
-            width: 260px; height: 635px; /* Meme hauteur totale que le jeu + skins */
+            width: 260px; height: 635px; 
             display: flex; flex-direction: column; gap: 15px;
         }
 
@@ -161,11 +195,8 @@
             overflow: hidden;
         }
 
-        /* Top 10 prend plus de place */
         .box-top10 { flex: 3; } 
-        /* Dernières parties prend moins de place */
         .box-recent { flex: 2; border-color: #ff4757; }
-        /* Records perso prend toute la hauteur */
         .box-perso { height: 100%; border-color: #ff6b6b; }
 
         h2 { text-align: center; margin-top: 0; font-size: 16px; text-transform: uppercase; border-bottom: 2px solid; padding-bottom: 10px; margin-bottom: 10px; }
@@ -227,7 +258,7 @@
 
                 <div id="start-screen" class="overlay">
                     <h1 style="color:#00d4ff; text-shadow:0 0 20px #00d4ff; margin-bottom: 5px;">JEU KEVIN</h1>
-                    <p style="color:#888; font-size: 12px; margin-bottom: 30px;">ULTIMATE EDITION</p>
+                    <p style="color:#888; font-size: 12px; margin-bottom: 30px;">ULTIMATE V6</p>
                     <input type="text" id="playerNameInput" placeholder="PSEUDO" maxlength="12">
                     <button class="btn" onclick="startGame()">JOUER</button>
                 </div>
@@ -255,7 +286,7 @@
             </div>
             
             <div class="sidebar-box box-recent">
-                <h2 class="title-red">5 DERNIERES JOUÉES</h2>
+                <h2 class="title-red">5 DERNIERES PARTIES</h2>
                 <ul id="recent-list"><li style="color:#555; text-align:center;">En attente...</li></ul>
             </div>
         </div>
@@ -300,7 +331,6 @@
         let paddle = { x: 340, y: 510, width: 120, height: 15 };
         let particles = [];
 
-        // --- EVENTS ---
         window.addEventListener('mousemove', (e) => {
             if(!state.running) return;
             const rect = canvas.getBoundingClientRect();
@@ -314,7 +344,6 @@
         window.addEventListener('keydown', (e) => { if(e.code === 'Space') state.spacePressed = true; });
         window.addEventListener('keyup', (e) => { if(e.code === 'Space') state.spacePressed = false; });
 
-        // --- LOGIQUE DATA ---
         function initMenu() {
             if(state.pseudo) {
                 nameInput.value = state.pseudo;
@@ -374,7 +403,6 @@
             renderSkins();
         }
 
-        // --- JEU ---
         async function startGame() {
             const name = nameInput.value.trim().toUpperCase();
             if(!name) { alert("Entre un pseudo !"); return; }
@@ -480,7 +508,10 @@
         function endGame() {
             state.running = false;
             if(state.score > state.bestScore) state.bestScore = state.score;
+            
+            // Sauvegarde Cloud (Double action : Historique + Best Score)
             if(window.saveScoreOnline) window.saveScoreOnline(state.pseudo, state.score);
+            
             setTimeout(() => checkOnlineData(), 1000);
             document.getElementById('finalScore').innerText = state.score;
             document.getElementById('game-over-screen').style.display = 'flex';
