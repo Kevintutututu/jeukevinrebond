@@ -3,11 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jeu Kevin - Arcade V6 Ultimate</title>
+    <title>Jeu Kevin - Arcade V8 Pro</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
     
     <script type="module">
-        // On importe setDoc, doc et getDoc pour gérer le classement unique
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, collection, addDoc, setDoc, doc, getDoc, query, orderBy, limit, onSnapshot, where, getDocs } 
         from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
@@ -28,68 +27,65 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // --------------------------------------------------------------
-        // NOUVELLE LOGIQUE DE SAUVEGARDE
-        // --------------------------------------------------------------
+        // --- SAUVEGARDE SECURISEE ---
+        let lastSaveTime = 0;
+
         window.saveScoreOnline = async (name, points) => {
             if(!name || points === 0) return;
-            const cleanName = name.trim().toUpperCase();
+            
+            // Anti-Spam : max 1 sauvegarde toutes les 5 secondes
             const now = Date.now();
+            if(now - lastSaveTime < 5000) return; 
+            lastSaveTime = now;
+
+            const cleanName = name.trim().toUpperCase();
 
             try {
-                // 1. Enregistrer dans l'HISTORIQUE (pour les "5 dernières parties")
-                // On utilise une collection "history" pour ne pas mélanger
+                // 1. Historique (pour le flux live)
                 await addDoc(collection(db, "history"), {
                     name: cleanName,
                     points: points,
                     date: now
                 });
 
-                // 2. Mettre à jour le CLASSEMENT UNIQUE (pour le "Top 10")
-                // On utilise le pseudo comme ID du document pour garantir l'unicité
+                // 2. Meilleur score Unique (pour le Top 10)
                 const userRef = doc(db, "best_scores", cleanName);
                 const userSnap = await getDoc(userRef);
 
-                // Si le joueur n'existe pas OU s'il a battu son record
                 if (!userSnap.exists() || points > userSnap.data().points) {
                     await setDoc(userRef, {
                         name: cleanName,
                         points: points,
                         date: now
                     });
-                    console.log("Nouveau record personnel sauvegardé !");
                 }
-
-            } catch (e) { console.error("Erreur Save:", e); }
+            } catch (e) { console.error("Quota atteint ou erreur:", e); }
         };
 
-        // Récupérer le meilleur score personnel (depuis la table unique)
+        // Récupération Record Perso (Unique)
         window.fetchUserBestScore = async (name) => {
             if(!name) return 0;
             const cleanName = name.trim().toUpperCase();
             try {
-                const userRef = doc(db, "best_scores", cleanName);
-                const userSnap = await getDoc(userRef);
-                if (userSnap.exists()) return userSnap.data().points;
+                const docRef = doc(db, "best_scores", cleanName);
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists()) return docSnap.data().points;
             } catch (e) { return 0; }
             return 0;
         };
 
-        // Récupérer les records personnels (Depuis l'historique)
+        // Récupération Liste Perso
         window.fetchPersonalRecords = async (name) => {
             const list = document.getElementById('personal-list');
             if(!list || !name) return;
             
-            list.innerHTML = "<li style='justify-content:center; color:#888;'><i>Recherche...</i></li>";
+            list.innerHTML = "<li style='justify-content:center; color:#888;'><i>Chargement...</i></li>";
             const cleanName = name.trim().toUpperCase();
 
             try {
-                // On cherche dans l'historique complet
-                const q = query(collection(db, "history"), where("name", "==", cleanName), orderBy("points", "desc"), limit(10));
-                // Note: Si l'index manque, le tri peut échouer, on sécurise en triant en JS si besoin
-                // Pour la version simple, on va tenter le tri JS pour éviter les erreurs d'index Firebase
-                const qSimple = query(collection(db, "history"), where("name", "==", cleanName));
-                const snap = await getDocs(qSimple);
+                // On utilise l'historique global filtré
+                const q = query(collection(db, "history"), where("name", "==", cleanName));
+                const snap = await getDocs(q);
                 
                 if(snap.empty) {
                     list.innerHTML = "<li style='justify-content:center; color:#555;'>Aucun record</li>";
@@ -98,8 +94,8 @@
 
                 let scores = [];
                 snap.forEach(doc => scores.push(doc.data().points));
-                scores.sort((a, b) => b - a); // Tri décroissant
-                scores = scores.slice(0, 10); // Top 10
+                scores.sort((a, b) => b - a);
+                scores = scores.slice(0, 10);
 
                 list.innerHTML = "";
                 scores.forEach((s, index) => {
@@ -107,18 +103,14 @@
                     li.innerHTML = `<span>#${index+1}</span> <span style="color:#00d4ff">${s}</span>`;
                     list.appendChild(li);
                 });
-
             } catch (e) { 
-                console.error(e);
-                list.innerHTML = "<li>Erreur</li>";
+                list.innerHTML = "<li style='color:#ff4757; font-size:10px; text-align:center;'>Quota dépassé (Revient demain)</li>"; 
             }
         };
 
-        // --------------------------------------------------------------
-        // ECOUTEURS TEMPS REEL (LIVE)
-        // --------------------------------------------------------------
-
-        // 1. TOP 10 MONDE (Basé sur les meilleurs scores uniques)
+        // ECOUTEURS LIVE
+        
+        // Top 10 (Unique)
         const qTop = query(collection(db, "best_scores"), orderBy("points", "desc"), limit(10));
         onSnapshot(qTop, (snapshot) => {
             const list = document.getElementById('score-list');
@@ -140,10 +132,11 @@
                 list.appendChild(li);
                 rank++;
             });
-            if(list.innerHTML === "") list.innerHTML = "<li style='justify-content:center; color:#555;'>Vide</li>";
+        }, (error) => {
+            console.log("Quota limite atteint pour aujourd'hui");
         });
 
-        // 2. 5 DERNIERES PARTIES (Basé sur l'historique, trié par date)
+        // 5 Dernières (Historique)
         const qRecent = query(collection(db, "history"), orderBy("date", "desc"), limit(5));
         onSnapshot(qRecent, (snapshot) => {
             const list = document.getElementById('recent-list');
@@ -152,14 +145,13 @@
             snapshot.forEach((doc) => {
                 const s = doc.data();
                 const li = document.createElement('li');
-                li.style.borderColor = "#ff475733"; 
+                li.style.borderColor = "#ff475733";
                 li.innerHTML = `
                     <span style="color:#aaa; font-size:12px;">${s.name}</span>
                     <span style="color:#ff4757; font-weight:bold;">${s.points} pts</span>
                 `;
                 list.appendChild(li);
             });
-            if(list.innerHTML === "") list.innerHTML = "<li style='text-align:center; color:#555'>En attente de jeu...</li>";
         });
     </script>
 
@@ -181,12 +173,8 @@
         }
         canvas { display: block; border-radius: 12px; width: 100%; height: 100%; }
 
-        /* Colonnes latérales */
-        .sidebar-column {
-            width: 260px; height: 635px; 
-            display: flex; flex-direction: column; gap: 15px;
-        }
-
+        .sidebar-column { width: 260px; height: 635px; display: flex; flex-direction: column; gap: 15px; }
+        
         .sidebar-box {
             background: rgba(15, 15, 25, 0.9);
             border: 1px solid #00d4ff; border-radius: 12px; padding: 15px;
@@ -258,7 +246,7 @@
 
                 <div id="start-screen" class="overlay">
                     <h1 style="color:#00d4ff; text-shadow:0 0 20px #00d4ff; margin-bottom: 5px;">JEU KEVIN</h1>
-                    <p style="color:#888; font-size: 12px; margin-bottom: 30px;">ULTIMATE V6</p>
+                    <p style="color:#888; font-size: 12px; margin-bottom: 30px;">ULTIMATE V8 (ANTI-LAG)</p>
                     <input type="text" id="playerNameInput" placeholder="PSEUDO" maxlength="12">
                     <button class="btn" onclick="startGame()">JOUER</button>
                 </div>
@@ -281,7 +269,7 @@
 
         <div class="sidebar-column">
             <div class="sidebar-box box-top10">
-                <h2 class="title-blue">TOP 10 MONDE</h2>
+                <h2 class="title-blue">TOP 10 JOUEURS</h2>
                 <ul id="score-list"><li>Chargement...</li></ul>
             </div>
             
@@ -327,9 +315,12 @@
             recordBroken: false
         };
 
-        let ball = { x: 400, y: 300, dx: 0, dy: 0, speed: 6, radius: 8 };
+        // VITESSE AJUSTEE POUR LE DELTA TIME (Pixels par seconde)
+        let ball = { x: 400, y: 300, dx: 0, dy: 0, speedBase: 400, speed: 400, radius: 8 };
         let paddle = { x: 340, y: 510, width: 120, height: 15 };
         let particles = [];
+        
+        let lastTime = 0; // Pour le delta time
 
         window.addEventListener('mousemove', (e) => {
             if(!state.running) return;
@@ -360,15 +351,12 @@
         async function checkOnlineData() {
             const name = nameInput.value.trim().toUpperCase();
             if(!name) return;
-            
             if(window.fetchUserBestScore) {
                 const onlineBest = await window.fetchUserBestScore(name);
                 if(onlineBest > state.bestScore) state.bestScore = onlineBest;
                 renderSkins();
             }
-            if(window.fetchPersonalRecords) {
-                await window.fetchPersonalRecords(name);
-            }
+            if(window.fetchPersonalRecords) await window.fetchPersonalRecords(name);
         }
 
         function renderSkins() {
@@ -413,7 +401,8 @@
             document.getElementById('game-over-screen').style.display = 'none';
             resetGame();
             state.running = true;
-            gameLoop();
+            lastTime = performance.now();
+            requestAnimationFrame(gameLoop);
         }
 
         function resetGame() {
@@ -422,27 +411,37 @@
             document.getElementById('liveScore').innerText = '0';
             popup.classList.remove('show');
             ball.x = canvas.width/2; ball.y = canvas.height/3;
-            ball.speed = 6;
+            ball.speed = ball.speedBase; // Reset vitesse (px/sec)
+            
             let angle = Math.random() * Math.PI/2 + Math.PI/4;
-            ball.dx = Math.cos(angle) * ball.speed;
-            ball.dy = Math.sin(angle) * ball.speed;
+            ball.dx = Math.cos(angle);
+            ball.dy = Math.sin(angle);
             if(ball.dy < 0) ball.dy = -ball.dy;
             particles = [];
         }
 
-        function update() {
+        function update(dt) {
+            // Convertir le temps écoulé (ms) en secondes pour le calcul physique
+            const delta = dt / 1000; 
+
             state.hue = (state.hue + 2) % 360;
+
             if(!state.recordBroken && state.score > state.bestScore && state.bestScore > 0) {
                 state.recordBroken = true;
                 showPopup("NOUVEAU RECORD !");
             }
+
             for(let i=particles.length-1; i>=0; i--) {
-                particles[i].life -= 0.04;
+                particles[i].life -= 2 * delta; // Disparition fluide selon le temps
                 particles[i].x += particles[i].sx;
                 particles[i].y += particles[i].sy;
                 if(particles[i].life <= 0) particles.splice(i,1);
             }
-            ball.x += ball.dx; ball.y += ball.dy;
+
+            // Déplacement basé sur le TEMPS (Anti-Lag)
+            ball.x += ball.dx * ball.speed * delta;
+            ball.y += ball.dy * ball.speed * delta;
+
             if(ball.x < ball.radius) { ball.x=ball.radius; ball.dx*=-1; }
             if(ball.x > canvas.width-ball.radius) { ball.x=canvas.width-ball.radius; ball.dx*=-1; }
             if(ball.y < ball.radius) { ball.y=ball.radius; ball.dy*=-1; }
@@ -451,15 +450,20 @@
                 if(ball.x >= paddle.x && ball.x <= paddle.x + paddle.width) {
                     let hit = (ball.x - (paddle.x + paddle.width/2)) / (paddle.width/2);
                     let angle = hit * (Math.PI/3);
-                    ball.speed = Math.min(ball.speed + 0.5, 20);
-                    ball.dx = ball.speed * Math.sin(angle);
-                    ball.dy = -ball.speed * Math.cos(angle);
+                    
+                    // Augmenter la vitesse (pixels/sec)
+                    ball.speed = Math.min(ball.speed + 30, 1000); 
+                    
+                    ball.dx = Math.sin(angle);
+                    ball.dy = -Math.cos(angle);
                     ball.y = paddle.y - ball.radius - 1;
+                    
                     state.score++;
                     document.getElementById('liveScore').innerText = state.score;
                     spawnParticles(ball.x, paddle.y, getCurrentColor());
                 }
             }
+
             if(ball.y > canvas.height) endGame();
         }
 
@@ -501,17 +505,22 @@
             setTimeout(() => popup.classList.remove('show'), 3000);
         }
 
-        function gameLoop() {
-            if(state.running) { update(); draw(); requestAnimationFrame(gameLoop); }
+        function gameLoop(timestamp) {
+            if(!state.running) return;
+            
+            // Calcul du Delta Time
+            const deltaTime = timestamp - lastTime;
+            lastTime = timestamp;
+
+            update(deltaTime);
+            draw();
+            requestAnimationFrame(gameLoop);
         }
 
         function endGame() {
             state.running = false;
             if(state.score > state.bestScore) state.bestScore = state.score;
-            
-            // Sauvegarde Cloud (Double action : Historique + Best Score)
             if(window.saveScoreOnline) window.saveScoreOnline(state.pseudo, state.score);
-            
             setTimeout(() => checkOnlineData(), 1000);
             document.getElementById('finalScore').innerText = state.score;
             document.getElementById('game-over-screen').style.display = 'flex';
