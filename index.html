@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jeu Kevin - Arcade V3 Fixed</title>
+    <title>Jeu Kevin - Arcade V4 Ultimate</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
     
     <script type="module">
@@ -39,17 +39,14 @@
             } catch (e) { console.error(e); }
         };
 
-        // Récupérer le meilleur score (Sans tri SQL pour éviter les bugs d'index)
+        // Récupérer le meilleur score
         window.fetchUserBestScore = async (name) => {
             if(!name) return 0;
             const cleanName = name.trim().toUpperCase();
             try {
-                // On prend tout ce qui correspond au nom
                 const q = query(collection(db, "scores"), where("name", "==", cleanName));
                 const snap = await getDocs(q);
                 if (snap.empty) return 0;
-
-                // On cherche le max nous-même (plus sûr)
                 let max = 0;
                 snap.forEach(doc => {
                     const p = doc.data().points;
@@ -59,7 +56,7 @@
             } catch (e) { console.error("Erreur Best Score:", e); return 0; }
         };
 
-        // Récupérer l'historique personnel (Sans tri SQL pour éviter les bugs)
+        // Récupérer l'historique personnel
         window.fetchPersonalRecords = async (name) => {
             const list = document.getElementById('personal-list');
             if(!list || !name) return;
@@ -76,11 +73,10 @@
                     return;
                 }
 
-                // On trie en JavaScript (C'est ce qui corrige le bug)
                 let scores = [];
                 snap.forEach(doc => scores.push(doc.data().points));
-                scores.sort((a, b) => b - a); // Plus grand au plus petit
-                scores = scores.slice(0, 10); // Top 10
+                scores.sort((a, b) => b - a);
+                scores = scores.slice(0, 10);
 
                 list.innerHTML = "";
                 scores.forEach((s, index) => {
@@ -88,16 +84,12 @@
                     li.innerHTML = `<span>#${index+1}</span> <span style="color:#00d4ff">${s}</span>`;
                     list.appendChild(li);
                 });
-
-            } catch (e) { 
-                console.error("Erreur Perso List:", e);
-                list.innerHTML = "<li style='color:red'>Erreur connexion</li>";
-            }
+            } catch (e) { list.innerHTML = "<li>Erreur chargement</li>"; }
         };
 
         // Top 10 Mondial
-        const q = query(collection(db, "scores"), orderBy("points", "desc"), limit(10));
-        onSnapshot(q, (snapshot) => {
+        const qTop = query(collection(db, "scores"), orderBy("points", "desc"), limit(10));
+        onSnapshot(qTop, (snapshot) => {
             const list = document.getElementById('score-list');
             if(!list) return;
             list.innerHTML = "";
@@ -116,6 +108,24 @@
                 `;
                 list.appendChild(li);
                 rank++;
+            });
+        });
+
+        // Dernières parties jouées (Trié par date décroissante)
+        const qRecent = query(collection(db, "scores"), orderBy("date", "desc"), limit(5));
+        onSnapshot(qRecent, (snapshot) => {
+            const list = document.getElementById('recent-list');
+            if(!list) return;
+            list.innerHTML = "";
+            snapshot.forEach((doc) => {
+                const s = doc.data();
+                const li = document.createElement('li');
+                li.style.borderBottom = "1px solid #333";
+                li.innerHTML = `
+                    <span style="color:#aaa; font-size:12px;">${s.name}</span>
+                    <span style="color:#fff; font-size:12px;">${s.points} pts</span>
+                `;
+                list.appendChild(li);
             });
         });
     </script>
@@ -138,15 +148,32 @@
         }
         canvas { display: block; border-radius: 12px; width: 100%; height: 100%; }
 
-        .sidebar {
-            width: 250px; height: 100%; background: rgba(15, 15, 25, 0.9);
-            border: 1px solid #00d4ff; border-radius: 12px; padding: 20px;
+        /* Sidebar divisée en deux parties */
+        .sidebar-container {
+            width: 250px; height: 100%; display: flex; flex-direction: column; gap: 15px;
+        }
+
+        .sidebar-box {
+            background: rgba(15, 15, 25, 0.9);
+            border: 1px solid #00d4ff; border-radius: 12px; padding: 15px;
             display: flex; flex-direction: column;
             box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            flex-grow: 1; /* Prend l'espace disponible */
+            overflow: hidden;
         }
-        h2 { text-align: center; color: #00d4ff; border-bottom: 2px solid #00d4ff33; padding-bottom: 10px; margin-top: 0; font-size: 18px; }
+
+        /* Pour la section "Dernières parties" qui peut être plus petite */
+        .sidebar-box.small {
+            flex-grow: 0; height: 200px; border-color: #555;
+        }
+
+        h2 { text-align: center; color: #00d4ff; border-bottom: 2px solid #00d4ff33; padding-bottom: 10px; margin-top: 0; font-size: 16px; text-transform: uppercase; }
         ul { list-style: none; padding: 0; overflow-y: auto; flex-grow: 1; }
-        li { padding: 8px; border-bottom: 1px solid #ffffff10; display: flex; justify-content: space-between; font-size: 14px; }
+        li { padding: 8px; border-bottom: 1px solid #ffffff10; display: flex; justify-content: space-between; font-size: 13px; }
+
+        /* Scrollbar */
+        ul::-webkit-scrollbar { width: 4px; }
+        ul::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
 
         #skins-panel {
             width: 800px; padding: 15px; background: rgba(15, 15, 25, 0.8);
@@ -164,7 +191,6 @@
         .skin-btn.locked { opacity: 0.3; cursor: not-allowed; border-color: #333; }
         .skin-btn.locked::after { content: '🔒'; position: absolute; top: 8px; left: 8px; font-size: 14px; }
         .skin-btn.selected { border-color: white; transform: scale(1.2); box-shadow: 0 0 15px white; }
-        
         .skin-score-req { font-size: 10px; color: #888; font-weight: bold; }
 
         #encouragement-popup {
@@ -188,13 +214,11 @@
 
         #liveScore { position: absolute; top: 20px; left: 20px; font-size: 32px; font-weight: bold; color: #ffffff40; pointer-events: none; }
         
-        ul::-webkit-scrollbar { width: 5px; }
-        ul::-webkit-scrollbar-thumb { background: #00d4ff; border-radius: 10px; }
-        
-        @media (max-width: 1200px) {
+        @media (max-width: 1300px) {
             #main-layout { flex-direction: column; align-items: center; height: auto; }
             #game-column { order: 1; }
-            .sidebar { width: 800px; height: 300px; order: 2; margin-bottom: 20px; }
+            .sidebar-container { width: 800px; height: auto; flex-direction: row; order: 2; margin-bottom: 20px; }
+            .sidebar-box { height: 300px; }
         }
     </style>
 </head>
@@ -229,15 +253,25 @@
             </div>
         </div>
 
-        <div class="sidebar">
-            <h2>TOP 10 MONDE</h2>
-            <ul id="score-list"><li>Chargement...</li></ul>
+        <div class="sidebar-container">
+            <div class="sidebar-box">
+                <h2>TOP 10 MONDE</h2>
+                <ul id="score-list"><li>Chargement...</li></ul>
+            </div>
+            
+            <div class="sidebar-box small">
+                <h2 style="color:#aaa; border-color:#555;">EN DIRECT</h2>
+                <ul id="recent-list"><li style="color:#555; text-align:center;">En attente...</li></ul>
+            </div>
         </div>
 
-        <div class="sidebar" style="border-color: #ff6b6b;">
-            <h2 style="color: #ff6b6b; border-color: #ff6b6b33;">MES RECORDS</h2>
-            <ul id="personal-list"><li style="color:#555; justify-content: center;">Entre ton pseudo</li></ul>
+        <div class="sidebar-container">
+            <div class="sidebar-box" style="border-color: #ff6b6b;">
+                <h2 style="color: #ff6b6b; border-color: #ff6b6b33;">MES RECORDS</h2>
+                <ul id="personal-list"><li style="color:#555; justify-content: center;">Entre ton pseudo</li></ul>
+            </div>
         </div>
+
     </div>
 
     <script>
@@ -253,7 +287,7 @@
             { score: 25, color: '#3498db', name: 'BLEU' },
             { score: 50, color: '#ff9ff3', name: 'ROSE' },
             { score: 100, color: '#f1c40f', name: 'JAUNE' },
-            { score: 200, color: 'rainbow', name: 'RAINBOW' } // Rainbow corrigé
+            { score: 200, color: 'rainbow', name: 'RAINBOW' }
         ];
 
         let state = {
@@ -294,7 +328,6 @@
             renderSkins();
         }
 
-        // Déclenché quand on quitte le champ ou appuie sur Entrée
         nameInput.addEventListener('blur', () => {
             state.pseudo = nameInput.value.trim().toUpperCase();
             checkOnlineData();
@@ -304,13 +337,11 @@
             const name = nameInput.value.trim().toUpperCase();
             if(!name) return;
             
-            // 1. Meilleur score pour les skins
             if(window.fetchUserBestScore) {
                 const onlineBest = await window.fetchUserBestScore(name);
                 if(onlineBest > state.bestScore) state.bestScore = onlineBest;
                 renderSkins();
             }
-            // 2. Liste historique perso
             if(window.fetchPersonalRecords) {
                 await window.fetchPersonalRecords(name);
             }
@@ -325,7 +356,6 @@
                 const btn = document.createElement('div');
                 btn.className = 'skin-btn';
                 
-                // Correction visuelle du bouton Rainbow
                 if(skin.color === 'rainbow') {
                     btn.style.background = 'linear-gradient(45deg, red, orange, yellow, green, blue, violet)';
                 } else {
@@ -448,7 +478,6 @@
             ctx.shadowBlur = 0;
         }
 
-        // Correction Rainbow : Retourne une vraie couleur dynamique
         function getCurrentColor() {
             if(state.selectedColor === 'rainbow') return `hsl(${state.hue}, 100%, 50%)`;
             return state.selectedColor;
