@@ -3,15 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jeu Kevin - Arcade V10 Ultimate</title>
+    <title>Jeu Kevin - Arcade V11 Ultimate</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
     
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, setDoc, doc, getDoc, query, orderBy, limit, onSnapshot, where, getDocs } 
+        import { getFirestore, collection, addDoc, setDoc, doc, getDoc, query, orderBy, limit, onSnapshot, where, getDocs, increment } 
         from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        // TES CLES SONT ICI :
+        // ==================================================================
+        // CLES INTEGREES
+        // ==================================================================
         const firebaseConfig = {
             apiKey: "AIzaSyDis3uQdBdzfuOnLF2QMfsmuSyFni2LoLU",
             authDomain: "kevin-arcade.firebaseapp.com",
@@ -25,7 +27,7 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // --- SAUVEGARDE (Double écriture : Historique + Top 10 Unique) ---
+        // --- SAUVEGARDE (Triple écriture : Historique + Best Score + Compteur Parties) ---
         let lastSaveTime = 0;
 
         window.saveScoreOnline = async (name, points) => {
@@ -39,29 +41,31 @@
             const cleanName = name.trim().toUpperCase();
 
             try {
-                // 1. Ajout à l'historique global (Pour "Dernières parties" et "Mes Records")
+                // 1. Historique Global
                 await addDoc(collection(db, "history"), {
                     name: cleanName,
                     points: points,
                     date: now
                 });
 
-                // 2. Mise à jour du Meilleur Score Unique (Pour "Top 10 Monde")
+                // 2. Best Score Unique
                 const userRef = doc(db, "best_scores", cleanName);
                 const userSnap = await getDoc(userRef);
-
-                // On ne met à jour que si le nouveau score est meilleur ou n'existe pas
                 if (!userSnap.exists() || points > userSnap.data().points) {
-                    await setDoc(userRef, {
-                        name: cleanName,
-                        points: points,
-                        date: now
-                    });
+                    await setDoc(userRef, { name: cleanName, points: points, date: now }, { merge: true });
                 }
-            } catch (e) { console.error("Erreur ou Quota:", e); }
+
+                // 3. Compteur de parties (Stats Joueur) - NOUVEAU
+                const statsRef = doc(db, "user_stats", cleanName);
+                await setDoc(statsRef, { 
+                    name: cleanName,
+                    gamesPlayed: increment(1) // Ajoute +1 atomiquement
+                }, { merge: true });
+
+            } catch (e) { console.error("Erreur/Quota:", e); }
         };
 
-        // Récupérer le meilleur score du joueur (Pour débloquer les skins)
+        // Récupérer Best Score
         window.fetchUserBestScore = async (name) => {
             if(!name) return 0;
             const cleanName = name.trim().toUpperCase();
@@ -73,30 +77,24 @@
             return 0;
         };
 
-        // Récupérer "Mes Records" (Top 10 Perso depuis l'historique)
+        // Récupérer Mes Records
         window.fetchPersonalRecords = async (name) => {
             const list = document.getElementById('personal-list');
             if(!list || !name) return;
-            
             list.innerHTML = "<li style='justify-content:center; color:#888;'><i>Chargement...</i></li>";
             const cleanName = name.trim().toUpperCase();
 
             try {
-                // On récupère tout l'historique de ce joueur
                 const q = query(collection(db, "history"), where("name", "==", cleanName));
                 const snap = await getDocs(q);
-                
                 if(snap.empty) {
                     list.innerHTML = "<li style='justify-content:center; color:#555;'>Aucun record</li>";
                     return;
                 }
-
-                // On trie en JavaScript (pour éviter les bugs d'index Firebase)
                 let scores = [];
                 snap.forEach(doc => scores.push(doc.data().points));
-                scores.sort((a, b) => b - a); // Plus grand au plus petit
-                scores = scores.slice(0, 10); // On garde les 10 meilleurs
-
+                scores.sort((a, b) => b - a);
+                scores = scores.slice(0, 10);
                 list.innerHTML = "";
                 scores.forEach((s, index) => {
                     const li = document.createElement('li');
@@ -108,7 +106,7 @@
 
         // --- LISTENERS LIVE ---
 
-        // 1. Top 10 Monde (Basé sur "best_scores", donc UNIQUE par joueur)
+        // 1. Top 10 Meilleurs Scores
         const qTop = query(collection(db, "best_scores"), orderBy("points", "desc"), limit(10));
         onSnapshot(qTop, (snapshot) => {
             const list = document.getElementById('score-list');
@@ -132,7 +130,7 @@
             });
         });
 
-        // 2. 5 Dernières Parties (Basé sur "history" par date)
+        // 2. 5 Dernières Parties
         const qRecent = query(collection(db, "history"), orderBy("date", "desc"), limit(5));
         onSnapshot(qRecent, (snapshot) => {
             const list = document.getElementById('recent-list');
@@ -149,6 +147,31 @@
                 list.appendChild(li);
             });
         });
+
+        // 3. Top 10 Plus Actifs (NOUVEAU)
+        const qActive = query(collection(db, "user_stats"), orderBy("gamesPlayed", "desc"), limit(10));
+        onSnapshot(qActive, (snapshot) => {
+            const list = document.getElementById('active-list');
+            if(!list) return;
+            list.innerHTML = "";
+            let rank = 1;
+            snapshot.forEach((doc) => {
+                const s = doc.data();
+                const li = document.createElement('li');
+                li.style.borderColor = "#2ecc7133"; // Vert
+                li.innerHTML = `
+                    <div style="display:flex; gap:10px;">
+                        <span style="opacity:0.5; width:20px;">#${rank}</span>
+                        <span style="color:#fff;">${s.name}</span>
+                    </div>
+                    <span style="color:#2ecc71;">${s.gamesPlayed}</span>
+                `;
+                list.appendChild(li);
+                rank++;
+            });
+            if(list.innerHTML === "") list.innerHTML = "<li style='justify-content:center; color:#555'>Aucune donnée</li>";
+        });
+
     </script>
 
     <style>
@@ -169,7 +192,7 @@
         }
         canvas { display: block; border-radius: 12px; width: 100%; height: 100%; }
 
-        /* Footer Défilant */
+        /* Footer */
         .footer-scroll {
             position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(0,0,0,0.9);
             border-top: 1px solid #333; height: 30px; overflow: hidden; white-space: nowrap;
@@ -177,8 +200,7 @@
         }
         .scrolling-text {
             animation: scroll 20s linear infinite;
-            color: #00d4ff; font-size: 12px; letter-spacing: 2px; text-transform: uppercase;
-            padding-left: 100%;
+            color: #00d4ff; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; padding-left: 100%;
         }
         @keyframes scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
 
@@ -188,15 +210,19 @@
             background: rgba(15, 15, 25, 0.9); border: 1px solid #00d4ff; border-radius: 12px; padding: 15px;
             display: flex; flex-direction: column; box-shadow: 0 0 20px rgba(0,0,0,0.5); overflow: hidden;
         }
-        .box-top10 { flex: 3; } .box-recent { flex: 2; border-color: #ff4757; } .box-perso { height: 100%; border-color: #ff6b6b; }
+        .box-top10 { flex: 3; } 
+        .box-recent { flex: 2; border-color: #ff4757; } 
+        .box-perso { flex: 3; border-color: #ff6b6b; }
+        .box-active { flex: 2; border-color: #2ecc71; } /* Nouvelle box */
 
-        h2 { text-align: center; margin-top: 0; font-size: 16px; text-transform: uppercase; border-bottom: 2px solid; padding-bottom: 10px; margin-bottom: 10px; }
+        h2 { text-align: center; margin-top: 0; font-size: 14px; text-transform: uppercase; border-bottom: 2px solid; padding-bottom: 8px; margin-bottom: 8px; }
         .title-blue { color: #00d4ff; border-color: #00d4ff33; }
         .title-red { color: #ff4757; border-color: #ff475733; }
         .title-pink { color: #ff6b6b; border-color: #ff6b6b33; }
+        .title-green { color: #2ecc71; border-color: #2ecc7133; }
 
         ul { list-style: none; padding: 0; overflow-y: auto; flex-grow: 1; }
-        li { padding: 8px; border-bottom: 1px solid #ffffff10; display: flex; justify-content: space-between; font-size: 13px; align-items: center; }
+        li { padding: 6px 8px; border-bottom: 1px solid #ffffff10; display: flex; justify-content: space-between; font-size: 12px; align-items: center; }
         ul::-webkit-scrollbar { width: 4px; } ul::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
 
         /* Skins Panel */
@@ -219,7 +245,6 @@
         .skin-btn.selected { border-color: white; transform: scale(1.2); box-shadow: 0 0 10px white; }
         .skin-req { font-size: 9px; color: #666; margin-top: 4px; font-family: monospace; }
 
-        /* Popups */
         #encouragement-popup {
             position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%);
             font-size: 40px; font-weight: bold; color: #ffd700; text-shadow: 0 0 30px #ffd700;
@@ -255,7 +280,7 @@
 
                 <div id="start-screen" class="overlay">
                     <h1 style="color:#00d4ff; text-shadow:0 0 20px #00d4ff; margin-bottom: 5px;">JEU KEVIN</h1>
-                    <p style="color:#888; font-size: 12px; margin-bottom: 30px;">ULTIMATE V10</p>
+                    <p style="color:#888; font-size: 12px; margin-bottom: 30px;">ULTIMATE V11</p>
                     <input type="text" id="playerNameInput" placeholder="PSEUDO" maxlength="12">
                     <button class="btn" onclick="startGame()">JOUER</button>
                 </div>
@@ -298,6 +323,10 @@
                 <h2 class="title-pink">MES RECORDS</h2>
                 <ul id="personal-list"><li style="color:#555; justify-content: center;">Entre ton pseudo</li></ul>
             </div>
+            <div class="sidebar-box box-active">
+                <h2 class="title-green">PLUS ACTIFS</h2>
+                <ul id="active-list"><li style="color:#555; justify-content: center;">En attente...</li></ul>
+            </div>
         </div>
     </div>
 
@@ -311,7 +340,6 @@
         const nameInput = document.getElementById('playerNameInput');
         const popup = document.getElementById('encouragement-popup');
 
-        // --- DONNEES SKINS (Modifiables ici) ---
         const BALL_SKINS = [
             { score: 0, color: '#ff6b6b', name: 'ROUGE' },
             { score: 10, color: '#2ecc71', name: 'VERT' },
@@ -331,15 +359,10 @@
         ];
 
         let state = {
-            running: false,
-            score: 0,
-            pseudo: localStorage.getItem('kevin_pseudo') || "",
-            bestScore: 0,
+            running: false, score: 0, pseudo: localStorage.getItem('kevin_pseudo') || "", bestScore: 0,
             selectedBallColor: localStorage.getItem('kevin_color') || '#ff6b6b',
             selectedPaddleColor: localStorage.getItem('kevin_paddle_color') || '#00d4ff',
-            hue: 0,
-            spacePressed: false,
-            recordBroken: false
+            hue: 0, spacePressed: false, recordBroken: false
         };
 
         let ball = { x: 400, y: 300, dx: 0, dy: 0, speedBase: 400, speed: 400, radius: 8 };
@@ -347,7 +370,6 @@
         let particles = [];
         let lastTime = 0;
 
-        // --- EVENTS ---
         window.addEventListener('mousemove', (e) => {
             if(!state.running) return;
             const rect = canvas.getBoundingClientRect();
@@ -361,12 +383,8 @@
         window.addEventListener('keydown', (e) => { if(e.code === 'Space') state.spacePressed = true; });
         window.addEventListener('keyup', (e) => { if(e.code === 'Space') state.spacePressed = false; });
 
-        // --- INIT MENU ---
         function initMenu() {
-            if(state.pseudo) {
-                nameInput.value = state.pseudo;
-                checkOnlineData();
-            }
+            if(state.pseudo) { nameInput.value = state.pseudo; checkOnlineData(); }
             refreshAllSkins();
         }
 
@@ -388,31 +406,23 @@
 
         function refreshAllSkins() {
             renderSkinRow(BALL_SKINS, 'ballSkinsContainer', state.selectedBallColor, (c) => {
-                state.selectedBallColor = c;
-                localStorage.setItem('kevin_color', c);
+                state.selectedBallColor = c; localStorage.setItem('kevin_color', c);
             });
             renderSkinRow(PADDLE_SKINS, 'paddleSkinsContainer', state.selectedPaddleColor, (c) => {
-                state.selectedPaddleColor = c;
-                localStorage.setItem('kevin_paddle_color', c);
+                state.selectedPaddleColor = c; localStorage.setItem('kevin_paddle_color', c);
             });
         }
 
         function renderSkinRow(skinsData, containerId, currentSelection, onSelect) {
             const container = document.getElementById(containerId);
             container.innerHTML = '';
-            
             skinsData.forEach(skin => {
                 const wrapper = document.createElement('div');
                 wrapper.className = 'skin-wrapper';
-
                 const btn = document.createElement('div');
                 btn.className = 'skin-btn';
-                
                 if(skin.color === 'rainbow') btn.style.background = 'linear-gradient(45deg, red, blue)';
-                else if(skin.name === 'NOIR') {
-                    btn.style.background = '#111'; 
-                    btn.style.border = '2px solid #555'; 
-                }
+                else if(skin.name === 'NOIR') { btn.style.background = '#111'; btn.style.border = '2px solid #555'; }
                 else btn.style.background = skin.color;
 
                 if(state.bestScore < skin.score) {
@@ -422,18 +432,14 @@
                     btn.onclick = () => { onSelect(skin.color); refreshAllSkins(); };
                     if(currentSelection === skin.color) btn.classList.add('selected');
                 }
-
                 const txt = document.createElement('div');
                 txt.className = 'skin-req';
                 txt.innerText = skin.score;
-
-                wrapper.appendChild(btn);
-                wrapper.appendChild(txt);
+                wrapper.appendChild(btn); wrapper.appendChild(txt);
                 container.appendChild(wrapper);
             });
         }
 
-        // --- JEU ---
         async function startGame() {
             const name = nameInput.value.trim().toUpperCase();
             if(!name) { alert("Entre un pseudo !"); return; }
@@ -501,7 +507,6 @@
 
         function draw() {
             ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(0,0,canvas.width, canvas.height);
-            
             const ballColor = getDynamicColor(state.selectedBallColor);
             const paddleColor = getDynamicColor(state.selectedPaddleColor);
 
@@ -511,16 +516,14 @@
             });
             ctx.globalAlpha = 1;
 
-            // Dessin Raquette avec effet Halo (Espace)
             ctx.fillStyle = paddleColor;
             ctx.shadowBlur = state.spacePressed ? 30 : 10; ctx.shadowColor = paddleColor;
-            if(state.selectedPaddleColor === '#111' || state.selectedPaddleColor === '#000000') {
+            if(state.selectedPaddleColor === '#111') {
                 ctx.strokeStyle = 'white'; ctx.lineWidth = 2;
                 ctx.strokeRect(paddle.x, paddle.y, paddle.width, paddle.height);
             }
             ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
 
-            // Dessin Balle
             ctx.fillStyle = ballColor;
             ctx.shadowColor = ballColor; ctx.shadowBlur = 15;
             ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI*2); ctx.fill();
