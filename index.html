@@ -3,168 +3,178 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jeu Kevin - Arcade Edition</title>
+    <title>Jeu Kevin - Arcade Online</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, query, orderBy, limit, onSnapshot } 
+        from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        // ==================================================================
+        // TES CLES FIREBASE (J'ai corrigé l'erreur de guillemet ici)
+        // ==================================================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyDis3uQdBdzfuOnLF2QMfsmuSyFni2LoLU",
+            authDomain: "kevin-arcade.firebaseapp.com",
+            projectId: "kevin-arcade",
+            storageBucket: "kevin-arcade.firebasestorage.app",
+            messagingSenderId: "961748922524",
+            appId: "1:961748922524:web:e122399654e6520b237d59",
+            measurementId: "G-62WZL4NGRM"
+        };
+        // ==================================================================
+
+        // Initialisation de la connexion
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Fonction pour sauvegarder le score (accessible depuis le jeu)
+        window.saveScoreOnline = async (name, points) => {
+            if(!name || points === 0) return;
+            try {
+                await addDoc(collection(db, "scores"), {
+                    name: name,
+                    points: points,
+                    date: new Date()
+                });
+                console.log("Score sauvegardé en ligne !");
+            } catch (e) {
+                console.error("Erreur de sauvegarde : ", e);
+            }
+        };
+
+        // Écouter le classement en direct
+        const q = query(collection(db, "scores"), orderBy("points", "desc"), limit(10));
+        onSnapshot(q, (snapshot) => {
+            const list = document.getElementById('score-list');
+            if(!list) return;
+            
+            list.innerHTML = ""; // On vide la liste
+            
+            let rank = 1;
+            snapshot.forEach((doc) => {
+                const s = doc.data();
+                const li = document.createElement('li');
+                
+                // Couleurs pour le podium
+                let rankColor = '#fff'; 
+                let medal = '';
+                if(rank === 1) { rankColor = '#ffd700'; medal = '👑'; }
+                if(rank === 2) { rankColor = '#c0c0c0'; }
+                if(rank === 3) { rankColor = '#cd7f32'; }
+
+                li.innerHTML = `
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <span style="opacity:0.5; width:25px; font-size:12px;">#${rank}</span>
+                        <span style="font-weight:bold; color:${rankColor}; text-shadow:0 0 5px ${rankColor}40;">
+                            ${medal} ${s.name.toUpperCase()}
+                        </span>
+                    </div>
+                    <span style="color:#00d4ff; font-weight:bold; font-family:'Courier New';">${s.points}</span>
+                `;
+                list.appendChild(li);
+                rank++;
+            });
+        });
+    </script>
+
     <style>
-        /* --- STYLE GLOBAL --- */
+        /* --- STYLE GRAPHIQUE (Cyberpunk / Arcade) --- */
         * { box-sizing: border-box; }
         
         body {
-            margin: 0;
-            padding: 0;
+            margin: 0; padding: 0;
             background-color: #050510;
             background-image: radial-gradient(circle at 50% 50%, #1a1a2e 0%, #000000 100%);
-            font-family: 'Orbitron', sans-serif; /* Police Arcade */
+            font-family: 'Orbitron', sans-serif;
             color: white;
             height: 100vh;
-            overflow: hidden; /* Pas de scroll */
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            overflow: hidden;
+            display: flex; justify-content: center; align-items: center;
         }
 
-        /* --- UI CONTAINER --- */
         #game-container {
             position: relative;
-            display: flex;
-            gap: 20px;
-            align-items: flex-start;
+            display: flex; gap: 20px; align-items: flex-start;
         }
 
-        /* --- ECRAN D'ACCUEIL (LOGIN) --- */
-        #start-screen {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.9);
-            z-index: 20;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            backdrop-filter: blur(5px);
-            border-radius: 12px;
-        }
-
-        input {
-            padding: 15px;
-            font-size: 18px;
-            border-radius: 5px;
-            border: 2px solid #00d4ff;
-            background: #0f0f1e;
-            color: white;
-            font-family: 'Orbitron', sans-serif;
-            text-align: center;
-            margin-bottom: 20px;
-            width: 250px;
-            outline: none;
-        }
-
-        input:focus { box-shadow: 0 0 15px #00d4ff; }
-
-        /* --- CANVAS (JEU) --- */
+        /* Cadre du jeu */
         #canvas-wrapper {
             position: relative;
-            box-shadow: 0 0 50px rgba(0, 212, 255, 0.15);
+            box-shadow: 0 0 50px rgba(0, 212, 255, 0.1);
             border-radius: 12px;
             border: 2px solid #333;
             background: #000;
+            width: 800px; height: 600px;
         }
+        canvas { display: block; border-radius: 12px; cursor: none; width: 100%; height: 100%; }
 
-        canvas {
-            display: block;
-            border-radius: 12px;
-            cursor: none; /* Cache le curseur dans le jeu */
-        }
-
-        /* --- TABLEAU DES SCORES --- */
+        /* Panneau Latéral (Classement) */
         #sidebar {
-            width: 280px;
-            background: rgba(20, 20, 35, 0.8);
+            width: 300px; height: 600px;
+            background: rgba(15, 15, 25, 0.9);
             border: 1px solid #00d4ff;
             border-radius: 12px;
             padding: 20px;
-            height: 600px;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-            display: flex;
-            flex-direction: column;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+            display: flex; flex-direction: column;
         }
 
         h2 {
-            color: #00d4ff;
-            text-align: center;
-            margin-top: 0;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            text-shadow: 0 0 10px rgba(0, 212, 255, 0.8);
-            font-size: 20px;
-            border-bottom: 2px solid rgba(0, 212, 255, 0.3);
-            padding-bottom: 15px;
+            color: #00d4ff; text-align: center; margin-top: 0;
+            font-size: 22px; border-bottom: 2px solid rgba(0, 212, 255, 0.3);
+            padding-bottom: 15px; letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
         }
 
-        #score-list {
-            list-style: none;
-            padding: 0;
-            overflow-y: auto;
-            flex-grow: 1;
-        }
-
+        #score-list { list-style: none; padding: 0; overflow-y: auto; flex-grow: 1; }
         #score-list li {
-            padding: 12px 10px;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
-            font-size: 14px;
-            display: flex;
-            justify-content: space-between;
+            padding: 12px 10px; border-bottom: 1px solid rgba(255,255,255,0.05);
+            font-size: 14px; display: flex; justify-content: space-between;
         }
-        
-        /* Couleurs du podium */
-        #score-list li:nth-child(1) { color: #ffd700; text-shadow: 0 0 5px #ffd700; font-weight: bold; font-size: 16px; }
-        #score-list li:nth-child(2) { color: #c0c0c0; text-shadow: 0 0 5px #c0c0c0; }
-        #score-list li:nth-child(3) { color: #cd7f32; }
 
-        /* --- OVERLAY GAME OVER --- */
-        #game-over-screen {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.85);
-            display: none;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 10;
-            border-radius: 12px;
+        /* Ecrans superposés (Login / Game Over) */
+        .overlay-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.92); z-index: 20;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            backdrop-filter: blur(8px); border-radius: 12px;
         }
+
+        /* Elements UI */
+        input {
+            padding: 15px; font-size: 20px; border-radius: 8px;
+            border: 2px solid #00d4ff; background: #0f0f1e; color: white;
+            font-family: 'Orbitron', sans-serif; text-align: center;
+            margin-bottom: 25px; width: 280px; outline: none;
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.1);
+            transition: 0.3s;
+        }
+        input:focus { box-shadow: 0 0 25px rgba(0, 212, 255, 0.4); transform: scale(1.02); }
 
         .btn {
-            padding: 15px 40px;
-            font-size: 20px;
+            padding: 15px 50px; font-size: 22px;
             background: linear-gradient(90deg, #00d4ff, #005bea);
-            border: none;
-            border-radius: 50px;
-            cursor: pointer;
-            font-weight: bold;
-            color: white;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            transition: transform 0.2s, box-shadow 0.2s;
-            font-family: 'Orbitron', sans-serif;
+            border: none; border-radius: 50px; cursor: pointer;
+            font-weight: bold; color: white; font-family: 'Orbitron', sans-serif;
+            transition: 0.2s; text-transform: uppercase; letter-spacing: 2px;
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.4);
+        }
+        .btn:hover { transform: scale(1.05); box-shadow: 0 0 40px rgba(0, 212, 255, 0.8); }
+
+        /* Score en jeu */
+        #liveScore {
+            position: absolute; top: 20px; left: 20px;
+            font-size: 32px; font-weight: bold; color: rgba(255,255,255,0.2);
+            pointer-events: none;
         }
 
-        .btn:hover {
-            transform: scale(1.05);
-            box-shadow: 0 0 20px rgba(0, 212, 255, 0.6);
-        }
-
-        /* --- RESPONSIVE --- */
-        @media (max-width: 1000px) {
+        /* Responsive Mobile */
+        @media (max-width: 1100px) {
             #game-container { flex-direction: column; align-items: center; }
-            #sidebar { width: 800px; height: 200px; }
-            canvas { width: 100%; max-width: 800px; }
+            #sidebar { width: 100%; max-width: 800px; height: 250px; }
+            #canvas-wrapper { width: 95vw; height: 60vh; }
         }
     </style>
 </head>
@@ -173,127 +183,108 @@
     <div id="game-container">
         
         <div id="canvas-wrapper">
-            <div id="start-screen">
-                <h1 style="color:#00d4ff; text-shadow:0 0 20px #00d4ff; font-size:40px; margin-bottom:10px;">JEU KEVIN</h1>
-                <p style="color:#aaa; margin-bottom:30px;">ARCADE EDITION</p>
-                <input type="text" id="playerNameInput" placeholder="ENTREZ VOTRE PSEUDO" maxlength="12">
+            
+            <div id="start-screen" class="overlay-screen">
+                <h1 style="color:#00d4ff; text-shadow:0 0 30px #00d4ff; font-size:48px; margin:0 0 10px 0;">JEU KEVIN</h1>
+                <p style="color:#aaa; margin-bottom:40px; letter-spacing:4px;">ONLINE EDITION</p>
+                <input type="text" id="playerNameInput" placeholder="TON PSEUDO" maxlength="12" autocomplete="off">
                 <button class="btn" onclick="startGame()">JOUER</button>
             </div>
 
-            <div id="game-over-screen">
-                <h2 style="font-size: 40px; color: #ff6b6b; border:none;">GAME OVER</h2>
-                <p style="font-size: 20px; margin-bottom: 20px;">Score de <span id="finalName" style="color:#00d4ff"></span> : <span id="finalScoreDisplay" style="color:white; font-weight:bold;">0</span></p>
+            <div id="game-over-screen" class="overlay-screen" style="display:none;">
+                <h2 style="font-size: 50px; color: #ff6b6b; border:none; margin-bottom:10px; text-shadow:0 0 30px #ff6b6b;">GAME OVER</h2>
+                <p style="font-size: 24px; margin-bottom: 30px; color:#ddd;">
+                    Score Final : <span id="finalScoreDisplay" style="color:#00d4ff; font-weight:bold; font-size:32px;">0</span>
+                </p>
                 <button class="btn" onclick="resetGame()">REJOUER</button>
             </div>
 
             <canvas id="gameCanvas" width="800" height="600"></canvas>
-            
-            <div style="position:absolute; top:20px; left:20px; font-size:24px; color:rgba(255,255,255,0.5); pointer-events:none;">
-                SCORE: <span id="liveScore" style="color:#fff">0</span>
-            </div>
+            <div id="liveScore">0</div>
         </div>
 
         <div id="sidebar">
-            <h2>MEILLEURS JOUEURS</h2>
+            <h2>CLASSEMENT LIVE</h2>
             <ul id="score-list">
-                </ul>
+                <li style="justify-content:center; padding-top:20px; color:#555;">Chargement des scores...</li>
+            </ul>
         </div>
 
     </div>
 
     <script>
-        // --- CONFIGURATION ---
+        // --- MOTEUR DE JEU ---
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         
-        // Eléments DOM
+        // UI Elements
         const startScreen = document.getElementById('start-screen');
         const gameOverScreen = document.getElementById('game-over-screen');
         const nameInput = document.getElementById('playerNameInput');
         const liveScoreEl = document.getElementById('liveScore');
-        const scoreListEl = document.getElementById('score-list');
-        const finalNameEl = document.getElementById('finalName');
         const finalScoreEl = document.getElementById('finalScoreDisplay');
 
-        // Variables de Jeu
+        // Variables Etat
         let gameRunning = false;
         let score = 0;
         let playerName = "Anonyme";
-        let animationId;
-        
-        // Particules (Explosions)
         let particles = [];
 
-        // Paramètres
+        // Paramètres Gameplay
         const PADDLE_WIDTH = 120;
         const PADDLE_HEIGHT = 15;
         const BALL_RADIUS = 8;
-        const MAX_SPEED = 16;
+        const MAX_SPEED = 18;
 
-        // Objets
-        let ball = { x: 400, y: 300, dx: 0, dy: 0, speed: 5, color: '#ff6b6b' };
+        let ball = { x: 400, y: 300, dx: 0, dy: 0, speed: 6, color: '#ff6b6b' };
         let paddle = { x: 340, y: 560, color: '#00d4ff' };
 
-        // --- GESTION DES PARTICULES ---
+        // --- GESTION DES PARTICULES (Explosions) ---
         class Particle {
             constructor(x, y, color) {
-                this.x = x;
-                this.y = y;
+                this.x = x; this.y = y; this.color = color;
                 this.size = Math.random() * 3 + 1;
-                this.speedX = (Math.random() - 0.5) * 6;
-                this.speedY = (Math.random() - 0.5) * 6;
-                this.color = color;
-                this.life = 1.0; // Opacité
+                this.speedX = (Math.random() - 0.5) * 8;
+                this.speedY = (Math.random() - 0.5) * 8;
+                this.life = 1.0;
             }
             update() {
-                this.x += this.speedX;
-                this.y += this.speedY;
-                this.life -= 0.03;
+                this.x += this.speedX; this.y += this.speedY;
+                this.life -= 0.04; // Disparition progressive
             }
             draw() {
-                ctx.fillStyle = this.color;
-                ctx.globalAlpha = this.life;
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, Math.PI*2);
-                ctx.fill();
+                ctx.globalAlpha = this.life; ctx.fillStyle = this.color;
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI*2); ctx.fill();
                 ctx.globalAlpha = 1.0;
             }
         }
 
         function createExplosion(x, y, color) {
-            for(let i=0; i<15; i++) {
-                particles.push(new Particle(x, y, color));
-            }
+            for(let i=0; i<12; i++) particles.push(new Particle(x, y, color));
         }
 
-        // --- MOTEUR DE JEU ---
-        
-        // Souris
+        // --- CONTROLES ---
         canvas.addEventListener('mousemove', (e) => {
             const rect = canvas.getBoundingClientRect();
-            let mouseX = e.clientX - rect.left;
-            
-            // Calcul du ratio pour l'affichage responsive
+            // Gestion du redimensionnement (responsive)
             const scaleX = canvas.width / rect.width;
-            mouseX *= scaleX;
-
+            let mouseX = (e.clientX - rect.left) * scaleX;
+            
             paddle.x = mouseX - (PADDLE_WIDTH / 2);
-
-            // Bloquer aux murs
-            if (paddle.x < 0) paddle.x = 0;
-            if (paddle.x > canvas.width - PADDLE_WIDTH) paddle.x = canvas.width - PADDLE_WIDTH;
+            // Bloquer la raquette dans les murs
+            if(paddle.x < 0) paddle.x = 0;
+            if(paddle.x > canvas.width - PADDLE_WIDTH) paddle.x = canvas.width - PADDLE_WIDTH;
         });
 
+        // --- LOGIQUE ---
         function startGame() {
-            const name = nameInput.value.trim();
-            if(name) {
-                playerName = name;
-                // Nettoyer input pour la prochaine fois
-                localStorage.setItem('last_player_name', name); 
+            const val = nameInput.value.trim();
+            if(val) {
+                playerName = val;
+                localStorage.setItem('kevin_last_name', playerName);
             } else {
                 playerName = "Anonyme";
             }
-            
             startScreen.style.display = 'none';
             resetGameLogic();
         }
@@ -304,199 +295,142 @@
             liveScoreEl.innerText = '0';
             gameOverScreen.style.display = 'none';
             canvas.style.cursor = 'none';
+            particles = [];
 
             // Reset Balle
             ball.x = canvas.width / 2;
             ball.y = canvas.height / 3;
-            ball.speed = 6;
-            // Angle de départ aléatoire mais vers le bas
-            let angle = Math.random() * Math.PI / 2 + Math.PI / 4; // Entre 45 et 135 deg
+            ball.speed = 6; // Vitesse initiale
+            
+            // Angle de départ aléatoire (vers le bas)
+            let angle = Math.random() * Math.PI/2 + Math.PI/4; // Entre 45° et 135°
             ball.dx = Math.cos(angle) * ball.speed;
             ball.dy = Math.sin(angle) * ball.speed;
-            
-            // Si elle part vers le haut, on inverse
-            if(ball.dy < 0) ball.dy = -ball.dy; 
+            if(ball.dy < 0) ball.dy = -ball.dy; // Force vers le bas
 
-            particles = []; // Vider les particules
-            gameLoop();
+            requestAnimationFrame(gameLoop);
         }
-        
-        // Bouton Rejouer
-        function resetGame() {
-            resetGameLogic();
-        }
+
+        function resetGame() { resetGameLogic(); }
 
         function update() {
             if(!gameRunning) return;
 
-            // Bouger particules
-            for(let i = particles.length - 1; i >= 0; i--) {
+            // Update particules
+            for(let i=particles.length-1; i>=0; i--) {
                 particles[i].update();
                 if(particles[i].life <= 0) particles.splice(i, 1);
             }
 
-            // Bouger balle
+            // Physique Balle
             ball.x += ball.dx;
             ball.y += ball.dy;
 
-            // --- COLLISIONS MURS ---
-            if(ball.x - BALL_RADIUS < 0) { // Gauche
-                ball.x = BALL_RADIUS;
-                ball.dx *= -1;
+            // Rebond Murs
+            if(ball.x - BALL_RADIUS < 0) {
+                ball.x = BALL_RADIUS; ball.dx *= -1;
                 createExplosion(ball.x, ball.y, '#fff');
             }
-            if(ball.x + BALL_RADIUS > canvas.width) { // Droite
-                ball.x = canvas.width - BALL_RADIUS;
-                ball.dx *= -1;
+            if(ball.x + BALL_RADIUS > canvas.width) {
+                ball.x = canvas.width - BALL_RADIUS; ball.dx *= -1;
                 createExplosion(ball.x, ball.y, '#fff');
             }
-            if(ball.y - BALL_RADIUS < 0) { // Haut
-                ball.y = BALL_RADIUS;
-                ball.dy *= -1;
+            if(ball.y - BALL_RADIUS < 0) {
+                ball.y = BALL_RADIUS; ball.dy *= -1;
                 createExplosion(ball.x, ball.y, '#fff');
             }
 
-            // --- COLLISION RAQUETTE (Cercle vs Rectangle) ---
-            // Trouver le point du rectangle le plus proche du centre du cercle
-            let closestX = Math.max(paddle.x, Math.min(ball.x, paddle.x + PADDLE_WIDTH));
-            let closestY = Math.max(paddle.y, Math.min(ball.y, paddle.y + PADDLE_HEIGHT));
-
-            let distanceX = ball.x - closestX;
-            let distanceY = ball.y - closestY;
-            let distanceSquared = (distanceX * distanceX) + (distanceY * distanceY);
-
-            // Si collision détectée
-            if(distanceSquared < (BALL_RADIUS * BALL_RADIUS)) {
-                // Vérifier qu'on tape bien par le haut (pour éviter les bugs si la raquette traverse la balle)
-                if(ball.y < paddle.y + (PADDLE_HEIGHT/2) && ball.dy > 0) {
+            // Rebond Raquette (Physique avancée)
+            // On vérifie si le bas de la balle touche le haut de la raquette
+            if(ball.y + BALL_RADIUS >= paddle.y && 
+               ball.y - BALL_RADIUS <= paddle.y + PADDLE_HEIGHT && 
+               ball.dy > 0) {
+                
+                // Est-ce qu'on est au dessus horizontalement ?
+                if(ball.x >= paddle.x && ball.x <= paddle.x + PADDLE_WIDTH) {
                     
-                    // Calcul précis du point de rebond
-                    let hitPoint = (ball.x - (paddle.x + PADDLE_WIDTH / 2)) / (PADDLE_WIDTH / 2);
+                    // Calcul de l'endroit où on tape (-1 gauche, 0 centre, 1 droite)
+                    let hitPoint = (ball.x - (paddle.x + PADDLE_WIDTH/2)) / (PADDLE_WIDTH/2);
                     
-                    // Augmenter vitesse
+                    // Augmentation vitesse
                     if(ball.speed < MAX_SPEED) ball.speed += 0.5;
                     
-                    // Nouvel angle basé sur l'impact (-1 à gauche, +1 à droite)
-                    // Max angle = 60 degrés (PI/3)
-                    let bounceAngle = hitPoint * (Math.PI / 3);
+                    // Nouvel angle (max 60 degrés)
+                    let bounceAngle = hitPoint * (Math.PI/3);
                     
                     ball.dx = ball.speed * Math.sin(bounceAngle);
                     ball.dy = -ball.speed * Math.cos(bounceAngle);
+                    
+                    // Repousser la balle pour éviter qu'elle "colle"
+                    ball.y = paddle.y - BALL_RADIUS - 1;
 
+                    // Score et FX
                     score++;
                     liveScoreEl.innerText = score;
-                    
-                    // Effets visuels
                     createExplosion(ball.x, paddle.y, '#00d4ff');
                 }
             }
 
-            // --- GAME OVER ---
+            // Perdu
             if(ball.y - BALL_RADIUS > canvas.height) {
                 endGame();
             }
         }
 
         function draw() {
-            // Effacer avec de la transparence pour créer l'effet de TRAINÉE
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.25)'; 
+            // Effet de traînée (Trail)
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Dessiner Particules
+            // Dessin Particules
             particles.forEach(p => p.draw());
 
-            // Dessiner Raquette (avec effet Glow)
-            ctx.shadowBlur = 20;
-            ctx.shadowColor = paddle.color;
+            // Raquette (Neon)
+            ctx.shadowBlur = 20; ctx.shadowColor = paddle.color;
             ctx.fillStyle = paddle.color;
             ctx.fillRect(paddle.x, paddle.y, PADDLE_WIDTH, PADDLE_HEIGHT);
-            
-            // Barres décoratives sur la raquette
-            ctx.fillStyle = '#fff';
-            ctx.fillRect(paddle.x + 10, paddle.y + 4, PADDLE_WIDTH - 20, 2);
+            // Petit détail design sur la raquette
+            ctx.fillStyle = 'white';
+            ctx.fillRect(paddle.x + 10, paddle.y + 5, PADDLE_WIDTH - 20, 2);
 
-            // Dessiner Balle (avec effet Glow)
-            ctx.shadowBlur = 15;
-            ctx.shadowColor = ball.color;
+            // Balle (Neon)
+            ctx.shadowBlur = 15; ctx.shadowColor = ball.color;
             ctx.fillStyle = ball.color;
-            ctx.beginPath();
-            ctx.arc(ball.x, ball.y, BALL_RADIUS, 0, Math.PI*2);
+            ctx.beginPath(); 
+            ctx.arc(ball.x, ball.y, BALL_RADIUS, 0, Math.PI*2); 
             ctx.fill();
 
-            // Reset Glow
+            // Reset ombres
             ctx.shadowBlur = 0;
         }
 
         function gameLoop() {
-            if(!gameRunning) return;
-            update();
-            draw();
-            requestAnimationFrame(gameLoop);
+            if(gameRunning) {
+                update();
+                draw();
+                requestAnimationFrame(gameLoop);
+            }
         }
 
         function endGame() {
             gameRunning = false;
-            finalNameEl.innerText = playerName;
             finalScoreEl.innerText = score;
             gameOverScreen.style.display = 'flex';
             canvas.style.cursor = 'default';
             
-            saveScore(playerName, score);
-        }
-
-        // --- SYSTEME DE LEADERBOARD ---
-        function saveScore(name, points) {
-            if(points === 0) return;
-
-            let scores = JSON.parse(localStorage.getItem('arcade_scores')) || [];
-            
-            // Ajouter nouveau score
-            scores.push({ name: name, points: points, date: new Date().toLocaleDateString() });
-            
-            // Trier (Décroissant)
-            scores.sort((a, b) => b.points - a.points);
-            
-            // Garder Top 20
-            scores = scores.slice(0, 20);
-            
-            localStorage.setItem('arcade_scores', JSON.stringify(scores));
-            displayLeaderboard();
-        }
-
-        function displayLeaderboard() {
-            let scores = JSON.parse(localStorage.getItem('arcade_scores')) || [];
-            scoreListEl.innerHTML = '';
-
-            if(scores.length === 0) {
-                scoreListEl.innerHTML = '<li style="justify-content:center; color:#555">Aucun score enregistré</li>';
-                return;
+            // Sauvegarde Cloud
+            if(window.saveScoreOnline) {
+                window.saveScoreOnline(playerName, score);
             }
-
-            scores.forEach((s, index) => {
-                let li = document.createElement('li');
-                // Format: #1  KEVIN  .........  450
-                li.innerHTML = `
-                    <div style="display:flex; align-items:center; gap:10px;">
-                        <span style="opacity:0.5; width:20px;">#${index+1}</span>
-                        <span style="font-weight:bold; color:white;">${s.name.toUpperCase()}</span>
-                    </div>
-                    <span style="color:#00d4ff; font-weight:bold;">${s.points} PTS</span>
-                `;
-                scoreListEl.appendChild(li);
-            });
         }
 
-        // --- INIT ---
-        // Pré-remplir le nom si déjà joué
-        if(localStorage.getItem('last_player_name')) {
-            nameInput.value = localStorage.getItem('last_player_name');
+        // Chargement initial du pseudo si existant
+        if(localStorage.getItem('kevin_last_name')) {
+            nameInput.value = localStorage.getItem('kevin_last_name');
         }
-        
-        displayLeaderboard();
-        // Dessiner une frame initiale pour que ce ne soit pas vide derrière le menu
-        resetGameLogic();
-        gameRunning = false; // Stop immédiat
-        draw(); 
+
+        // Premier rendu (écran noir propre)
+        ctx.fillStyle = 'black'; ctx.fillRect(0,0,canvas.width, canvas.height);
 
     </script>
 </body>
