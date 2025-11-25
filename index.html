@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jeu Kevin - Arcade V19 Optimized</title>
+    <title>Jeu Kevin - Arcade V18 Final</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
     
     <script type="module">
@@ -24,68 +24,129 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // --- SAUVEGARDE INTELLIGENTE (V19) ---
         let lastSaveTime = 0;
 
+        // --- SAUVEGARDE OPTIMISÉE ---
         window.saveGameResults = async (name, points, earnedCoins) => {
             if(!name || points === 0) return;
             
             const now = Date.now();
-            if(now - lastSaveTime < 2000) return; // Anti-spam
+            if(now - lastSaveTime < 2000) return; 
             lastSaveTime = now;
 
             const cleanName = name.trim().toUpperCase();
 
             try {
-                // 1. Historique Global (Pour le flux "Dernières Parties" uniquement)
-                // On écrit juste, on ne relit pas tout. C'est léger.
-                addDoc(collection(db, "history"), {
+                // 1. Historique Global (Pour le flux "Dernières Parties")
+                await addDoc(collection(db, "history"), {
                     name: cleanName,
                     points: points,
                     date: now
                 });
 
-                // 2. Mise à jour Top 10 Monde (Best Score Unique)
+                // 2. Top 10 Monde (Unique)
                 const bestRef = doc(db, "best_scores", cleanName);
+                // On utilise une lecture légère pour vérifier
                 getDoc(bestRef).then(snap => {
                     if (!snap.exists() || points > snap.data().points) {
                         setDoc(bestRef, { name: cleanName, points: points, date: now }, { merge: true });
                     }
                 });
 
-                // 3. Mise à jour Profil Joueur + TOP 10 PERSO
-                // C'est ici la nouveauté : on gère la liste perso directement ici
+                // 3. Profil Joueur + LISTE PERSO (C'est ici que tout se joue)
                 const userRef = doc(db, "user_stats", cleanName);
                 const userSnap = await getDoc(userRef);
                 
                 let myRecords = [];
-                
+                let currentInventory = [];
+                let currentEquipped = 'bg-default';
+                let currentPlays = 0;
+                let currentCoins = 0;
+
                 if(userSnap.exists()) {
-                    // On récupère la liste existante
-                    myRecords = userSnap.data().personalRecords || [];
+                    const data = userSnap.data();
+                    myRecords = data.personalRecords || []; // On récupère la liste optimisée
+                    currentInventory = data.inventory || [];
+                    currentEquipped = data.equippedBg || 'bg-default';
+                    currentPlays = data.gamesPlayed || 0;
+                    currentCoins = data.coins || 0;
                 }
 
-                // On ajoute le nouveau score
+                // Ajout du nouveau score
                 myRecords.push(points);
-                // On trie (plus grand au plus petit)
-                myRecords.sort((a, b) => b - a);
-                // On coupe pour ne garder que les 10 meilleurs
-                myRecords = myRecords.slice(0, 10);
+                myRecords.sort((a, b) => b - a); // Tri
+                myRecords = myRecords.slice(0, 10); // Garder Top 10
 
-                // On sauvegarde tout (Stats + Nouvelle liste propre)
+                // Sauvegarde tout dans le profil
                 await setDoc(userRef, { 
                     name: cleanName,
-                    gamesPlayed: increment(1),
-                    coins: increment(earnedCoins),
-                    personalRecords: myRecords // Sauvegarde de la liste optimisée
+                    gamesPlayed: currentPlays + 1,
+                    coins: currentCoins + earnedCoins,
+                    personalRecords: myRecords, // La liste est sauvée ici !
+                    inventory: currentInventory,
+                    equippedBg: currentEquipped
                 }, { merge: true });
+
+                // Mise à jour visuelle immédiate
+                displayPersonalRecords(myRecords);
 
             } catch (e) { console.error("Erreur Save:", e); }
         };
 
-        // --- LECTURE DONNEES ---
+        // --- RECUPERATION INTELLIGENTE (MIGRATION AUTO) ---
+        
+        // 1. Mes Records
+        window.fetchPersonalRecords = async (name) => {
+            const list = document.getElementById('personal-list');
+            if(!list || !name) return;
+            list.innerHTML = "<li style='justify-content:center; color:#888;'><i>Chargement...</i></li>";
+            
+            const cleanName = name.trim().toUpperCase();
+            const userRef = doc(db, "user_stats", cleanName);
 
-        // Récupérer Best Score Global
+            try {
+                const userSnap = await getDoc(userRef);
+                
+                // CAS 1 : Le joueur a déjà la nouvelle structure (Rapide)
+                if (userSnap.exists() && userSnap.data().personalRecords && userSnap.data().personalRecords.length > 0) {
+                    displayPersonalRecords(userSnap.data().personalRecords);
+                } 
+                // CAS 2 : C'est un ancien joueur, on doit récupérer son historique (Lent mais nécessaire une fois)
+                else {
+                    console.log("Migration des anciens scores...");
+                    const q = query(collection(db, "history"), where("name", "==", cleanName));
+                    const historySnap = await getDocs(q);
+                    
+                    let scores = [];
+                    if(!historySnap.empty) {
+                        historySnap.forEach(doc => scores.push(doc.data().points));
+                        scores.sort((a, b) => b - a);
+                        scores = scores.slice(0, 10);
+                        
+                        // On sauvegarde cette liste pour la prochaine fois !
+                        await setDoc(userRef, { personalRecords: scores }, { merge: true });
+                    }
+                    displayPersonalRecords(scores);
+                }
+            } catch (e) { list.innerHTML = "<li style='color:red; font-size:10px'>Erreur connexion</li>"; }
+        };
+
+        function displayPersonalRecords(scores) {
+            const list = document.getElementById('personal-list');
+            if(!list) return;
+            list.innerHTML = "";
+            if(!scores || scores.length === 0) {
+                list.innerHTML = "<li style='justify-content:center; color:#555;'>Aucun record</li>";
+                return;
+            }
+            scores.forEach((s, index) => {
+                const li = document.createElement('li');
+                li.innerHTML = `<span>#${index+1}</span> <span style="color:#00d4ff">${s}</span>`;
+                list.appendChild(li);
+            });
+        }
+
+        // 2. Meilleur Score (Pour Skins)
         window.fetchUserBestScore = async (name) => {
             if(!name) return 0;
             const cleanName = name.trim().toUpperCase();
@@ -97,38 +158,7 @@
             return 0;
         };
 
-        // Récupérer "Mes Records" (Version Optimisée V19)
-        // Lit directement la liste dans le profil au lieu de chercher dans l'historique
-        window.fetchPersonalRecords = async (name) => {
-            const list = document.getElementById('personal-list');
-            if(!list || !name) return;
-            
-            list.innerHTML = "<li style='justify-content:center; color:#888;'><i>Chargement...</i></li>";
-            const cleanName = name.trim().toUpperCase();
-
-            try {
-                const userRef = doc(db, "user_stats", cleanName);
-                const userSnap = await getDoc(userRef);
-                
-                list.innerHTML = ""; // Vider le chargement
-
-                if (!userSnap.exists() || !userSnap.data().personalRecords) {
-                    list.innerHTML = "<li style='justify-content:center; color:#555;'>Aucun record</li>";
-                    return;
-                }
-
-                const scores = userSnap.data().personalRecords; // On récupère la liste toute prête
-
-                scores.forEach((s, index) => {
-                    const li = document.createElement('li');
-                    li.innerHTML = `<span>#${index+1}</span> <span style="color:#00d4ff">${s}</span>`;
-                    list.appendChild(li);
-                });
-
-            } catch (e) { list.innerHTML = "<li style='color:red; font-size:10px'>Erreur connexion</li>"; }
-        };
-
-        // Données Boutique
+        // 3. User Data (Boutique)
         window.fetchUserData = async (name) => {
             if(!name) return null;
             const cleanName = name.trim().toUpperCase();
@@ -164,7 +194,7 @@
             await setDoc(statsRef, { equippedBg: bgId }, { merge: true });
         };
 
-        // --- LISTENERS LIVE ---
+        // --- LIVE LISTENERS ---
         const qTop = query(collection(db, "best_scores"), orderBy("points", "desc"), limit(10));
         onSnapshot(qTop, (snapshot) => {
             const list = document.getElementById('score-list');
@@ -174,6 +204,7 @@
                 const s = doc.data();
                 const li = document.createElement('li');
                 let color = rank === 1 ? '#ffd700' : (rank === 2 ? '#c0c0c0' : (rank === 3 ? '#cd7f32' : 'white'));
+                // COURONNE CORRIGEE
                 let medal = rank === 1 ? '<span style="margin-right:5px;">👑</span>' : '';
                 li.innerHTML = `<div style="display:flex; align-items:center; gap:5px;"><span style="opacity:0.5; width:20px;">#${rank}</span><span style="color:${color}; font-weight:bold;">${medal}${s.name}</span></div><span style="color:#00d4ff;">${s.points}</span>`;
                 list.appendChild(li); rank++;
@@ -339,7 +370,7 @@
             <div id="canvas-wrapper">
                 <div id="start-screen" class="overlay">
                     <h1 style="color:#00d4ff; text-shadow:0 0 20px #00d4ff; margin-bottom: 5px;">JEU KEVIN</h1>
-                    <p style="color:#888; font-size: 12px; margin-bottom: 15px;">ULTIMATE V19</p>
+                    <p style="color:#888; font-size: 12px; margin-bottom: 15px;">ULTIMATE V18</p>
                     <p style="color:#ffd700; font-size: 16px; margin-bottom: 30px;">MEILLEUR SCORE : <span id="bestScoreDisplay">0</span></p>
                     <input type="text" id="playerNameInput" placeholder="PSEUDO" maxlength="12">
                     <button class="btn" onclick="startGame()">JOUER</button>
