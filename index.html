@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jeu Kevin - Arcade V4 Ultimate</title>
+    <title>Jeu Kevin - Arcade V5 Ultimate</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
     
     <script type="module">
@@ -27,14 +27,15 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // Sauvegarder (En MAJUSCULES pour uniformiser)
+        // Sauvegarder le score avec la DATE
         window.saveScoreOnline = async (name, points) => {
             if(!name || points === 0) return;
             try {
+                // On utilise Date.now() pour avoir un timestamp simple et fiable
                 await addDoc(collection(db, "scores"), {
                     name: name.trim().toUpperCase(),
                     points: points,
-                    date: new Date()
+                    date: Date.now() 
                 });
             } catch (e) { console.error(e); }
         };
@@ -53,38 +54,33 @@
                     if(p > max) max = p;
                 });
                 return max;
-            } catch (e) { console.error("Erreur Best Score:", e); return 0; }
+            } catch (e) { return 0; }
         };
 
-        // Récupérer l'historique personnel
+        // Historique Perso
         window.fetchPersonalRecords = async (name) => {
             const list = document.getElementById('personal-list');
             if(!list || !name) return;
-            
-            list.innerHTML = "<li style='justify-content:center; color:#888;'><i>Recherche...</i></li>";
+            list.innerHTML = "<li style='justify-content:center; color:#888;'><i>Chargement...</i></li>";
             const cleanName = name.trim().toUpperCase();
-
             try {
                 const q = query(collection(db, "scores"), where("name", "==", cleanName));
                 const snap = await getDocs(q);
-                
                 if(snap.empty) {
                     list.innerHTML = "<li style='justify-content:center; color:#555;'>Aucun record</li>";
                     return;
                 }
-
                 let scores = [];
                 snap.forEach(doc => scores.push(doc.data().points));
                 scores.sort((a, b) => b - a);
                 scores = scores.slice(0, 10);
-
                 list.innerHTML = "";
                 scores.forEach((s, index) => {
                     const li = document.createElement('li');
                     li.innerHTML = `<span>#${index+1}</span> <span style="color:#00d4ff">${s}</span>`;
                     list.appendChild(li);
                 });
-            } catch (e) { list.innerHTML = "<li>Erreur chargement</li>"; }
+            } catch (e) { list.innerHTML = "<li>Erreur</li>"; }
         };
 
         // Top 10 Mondial
@@ -111,7 +107,9 @@
             });
         });
 
-        // Dernières parties jouées (Trié par date décroissante)
+        // 5 Dernières Parties (Correction de la requête)
+        // Note : Si ça ne s'affiche pas, c'est que les anciennes parties n'ont pas de champ "date".
+        // Joue une nouvelle partie pour voir le résultat apparaître.
         const qRecent = query(collection(db, "scores"), orderBy("date", "desc"), limit(5));
         onSnapshot(qRecent, (snapshot) => {
             const list = document.getElementById('recent-list');
@@ -120,13 +118,14 @@
             snapshot.forEach((doc) => {
                 const s = doc.data();
                 const li = document.createElement('li');
-                li.style.borderBottom = "1px solid #333";
+                li.style.borderColor = "#ff475733"; // Bordure rouge légère
                 li.innerHTML = `
                     <span style="color:#aaa; font-size:12px;">${s.name}</span>
-                    <span style="color:#fff; font-size:12px;">${s.points} pts</span>
+                    <span style="color:#ff4757; font-weight:bold;">${s.points}</span>
                 `;
                 list.appendChild(li);
             });
+            if(list.innerHTML === "") list.innerHTML = "<li style='text-align:center; color:#555'>Aucune donnée récente</li>";
         });
     </script>
 
@@ -138,7 +137,7 @@
             display: flex; justify-content: center; align-items: center; user-select: none;
         }
         
-        #main-layout { display: flex; gap: 20px; align-items: flex-start; height: 85vh; }
+        #main-layout { display: flex; gap: 20px; align-items: flex-start; height: 85vh; width: 95%; max-width: 1400px; justify-content: center; }
         #game-column { display: flex; flex-direction: column; gap: 15px; }
         
         #canvas-wrapper {
@@ -148,9 +147,10 @@
         }
         canvas { display: block; border-radius: 12px; width: 100%; height: 100%; }
 
-        /* Sidebar divisée en deux parties */
-        .sidebar-container {
-            width: 250px; height: 100%; display: flex; flex-direction: column; gap: 15px;
+        /* Colonnes latérales */
+        .sidebar-column {
+            width: 260px; height: 635px; /* Meme hauteur totale que le jeu + skins */
+            display: flex; flex-direction: column; gap: 15px;
         }
 
         .sidebar-box {
@@ -158,20 +158,23 @@
             border: 1px solid #00d4ff; border-radius: 12px; padding: 15px;
             display: flex; flex-direction: column;
             box-shadow: 0 0 20px rgba(0,0,0,0.5);
-            flex-grow: 1; /* Prend l'espace disponible */
             overflow: hidden;
         }
 
-        /* Pour la section "Dernières parties" qui peut être plus petite */
-        .sidebar-box.small {
-            flex-grow: 0; height: 200px; border-color: #555;
-        }
+        /* Top 10 prend plus de place */
+        .box-top10 { flex: 3; } 
+        /* Dernières parties prend moins de place */
+        .box-recent { flex: 2; border-color: #ff4757; }
+        /* Records perso prend toute la hauteur */
+        .box-perso { height: 100%; border-color: #ff6b6b; }
 
-        h2 { text-align: center; color: #00d4ff; border-bottom: 2px solid #00d4ff33; padding-bottom: 10px; margin-top: 0; font-size: 16px; text-transform: uppercase; }
+        h2 { text-align: center; margin-top: 0; font-size: 16px; text-transform: uppercase; border-bottom: 2px solid; padding-bottom: 10px; margin-bottom: 10px; }
+        .title-blue { color: #00d4ff; border-color: #00d4ff33; }
+        .title-red { color: #ff4757; border-color: #ff475733; }
+        .title-pink { color: #ff6b6b; border-color: #ff6b6b33; }
+
         ul { list-style: none; padding: 0; overflow-y: auto; flex-grow: 1; }
-        li { padding: 8px; border-bottom: 1px solid #ffffff10; display: flex; justify-content: space-between; font-size: 13px; }
-
-        /* Scrollbar */
+        li { padding: 8px; border-bottom: 1px solid #ffffff10; display: flex; justify-content: space-between; font-size: 13px; align-items: center; }
         ul::-webkit-scrollbar { width: 4px; }
         ul::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
 
@@ -180,14 +183,9 @@
             border: 1px solid #333; border-radius: 12px;
             display: flex; justify-content: space-between; align-items: center;
         }
-
         .skins-container { display: flex; gap: 20px; flex-grow: 1; justify-content: center; }
         .skin-item { display: flex; flex-direction: column; align-items: center; gap: 5px; }
-        
-        .skin-btn {
-            width: 40px; height: 40px; border-radius: 50%; border: 3px solid #333;
-            cursor: pointer; position: relative; transition: 0.2s;
-        }
+        .skin-btn { width: 40px; height: 40px; border-radius: 50%; border: 3px solid #333; cursor: pointer; position: relative; transition: 0.2s; }
         .skin-btn.locked { opacity: 0.3; cursor: not-allowed; border-color: #333; }
         .skin-btn.locked::after { content: '🔒'; position: absolute; top: 8px; left: 8px; font-size: 14px; }
         .skin-btn.selected { border-color: white; transform: scale(1.2); box-shadow: 0 0 15px white; }
@@ -197,8 +195,7 @@
             position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%);
             font-size: 40px; font-weight: bold; color: #ffd700;
             text-shadow: 0 0 30px #ffd700;
-            opacity: 0; pointer-events: none; transition: opacity 0.5s;
-            text-align: center; z-index: 15;
+            opacity: 0; pointer-events: none; transition: opacity 0.5s; text-align: center; z-index: 15;
         }
         #encouragement-popup.show { opacity: 1; animation: popScale 0.5s ease-out; }
         @keyframes popScale { 0% { transform: translate(-50%, -50%) scale(0.5); } 100% { transform: translate(-50%, -50%) scale(1.2); } }
@@ -206,19 +203,17 @@
         .overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.95); z-index: 20; display: flex;
-            flex-direction: column; justify-content: center; align-items: center;
-            border-radius: 12px;
+            flex-direction: column; justify-content: center; align-items: center; border-radius: 12px;
         }
         input { padding: 15px; font-size: 20px; background: #0f0f1e; border: 2px solid #00d4ff; color: white; text-align: center; border-radius: 8px; outline: none; margin-bottom: 20px; text-transform: uppercase; }
         .btn { padding: 15px 50px; font-size: 22px; background: linear-gradient(90deg, #00d4ff, #005bea); border: none; color: white; font-weight: bold; cursor: pointer; border-radius: 50px; }
-
         #liveScore { position: absolute; top: 20px; left: 20px; font-size: 32px; font-weight: bold; color: #ffffff40; pointer-events: none; }
         
-        @media (max-width: 1300px) {
-            #main-layout { flex-direction: column; align-items: center; height: auto; }
-            #game-column { order: 1; }
-            .sidebar-container { width: 800px; height: auto; flex-direction: row; order: 2; margin-bottom: 20px; }
-            .sidebar-box { height: 300px; }
+        @media (max-width: 1400px) {
+            #main-layout { flex-wrap: wrap; height: auto; }
+            .sidebar-column { width: 45%; height: 400px; order: 2; }
+            #game-column { width: 100%; align-items: center; order: 1; }
+            #canvas-wrapper, #skins-panel { width: 100%; max-width: 800px; }
         }
     </style>
 </head>
@@ -253,21 +248,21 @@
             </div>
         </div>
 
-        <div class="sidebar-container">
-            <div class="sidebar-box">
-                <h2>TOP 10 MONDE</h2>
+        <div class="sidebar-column">
+            <div class="sidebar-box box-top10">
+                <h2 class="title-blue">TOP 10 MONDE</h2>
                 <ul id="score-list"><li>Chargement...</li></ul>
             </div>
             
-            <div class="sidebar-box small">
-                <h2 style="color:#aaa; border-color:#555;">EN DIRECT</h2>
+            <div class="sidebar-box box-recent">
+                <h2 class="title-red">5 DERNIERES JOUÉES</h2>
                 <ul id="recent-list"><li style="color:#555; text-align:center;">En attente...</li></ul>
             </div>
         </div>
 
-        <div class="sidebar-container">
-            <div class="sidebar-box" style="border-color: #ff6b6b;">
-                <h2 style="color: #ff6b6b; border-color: #ff6b6b33;">MES RECORDS</h2>
+        <div class="sidebar-column">
+            <div class="sidebar-box box-perso">
+                <h2 class="title-pink">MES RECORDS</h2>
                 <ul id="personal-list"><li style="color:#555; justify-content: center;">Entre ton pseudo</li></ul>
             </div>
         </div>
@@ -352,16 +347,11 @@
             SKINS.forEach(skin => {
                 const wrapper = document.createElement('div');
                 wrapper.className = 'skin-item';
-
                 const btn = document.createElement('div');
                 btn.className = 'skin-btn';
+                if(skin.color === 'rainbow') btn.style.background = 'linear-gradient(45deg, red, orange, yellow, green, blue, violet)';
+                else btn.style.background = skin.color;
                 
-                if(skin.color === 'rainbow') {
-                    btn.style.background = 'linear-gradient(45deg, red, orange, yellow, green, blue, violet)';
-                } else {
-                    btn.style.background = skin.color;
-                }
-
                 if(state.bestScore < skin.score) {
                     btn.classList.add('locked');
                     btn.title = `Débloquer à ${skin.score}`;
@@ -369,11 +359,9 @@
                     btn.onclick = () => selectSkin(skin.color);
                     if(state.selectedColor === skin.color) btn.classList.add('selected');
                 }
-
                 const scoreTxt = document.createElement('div');
                 scoreTxt.className = 'skin-score-req';
                 scoreTxt.innerText = skin.score + " pts";
-
                 wrapper.appendChild(btn);
                 wrapper.appendChild(scoreTxt);
                 skinsContainer.appendChild(wrapper);
@@ -390,15 +378,11 @@
         async function startGame() {
             const name = nameInput.value.trim().toUpperCase();
             if(!name) { alert("Entre un pseudo !"); return; }
-            
             state.pseudo = name;
             localStorage.setItem('kevin_pseudo', name);
-            
             await checkOnlineData(); 
-
             document.getElementById('start-screen').style.display = 'none';
             document.getElementById('game-over-screen').style.display = 'none';
-            
             resetGame();
             state.running = true;
             gameLoop();
@@ -409,7 +393,6 @@
             state.recordBroken = false;
             document.getElementById('liveScore').innerText = '0';
             popup.classList.remove('show');
-            
             ball.x = canvas.width/2; ball.y = canvas.height/3;
             ball.speed = 6;
             let angle = Math.random() * Math.PI/2 + Math.PI/4;
@@ -421,19 +404,16 @@
 
         function update() {
             state.hue = (state.hue + 2) % 360;
-
             if(!state.recordBroken && state.score > state.bestScore && state.bestScore > 0) {
                 state.recordBroken = true;
                 showPopup("NOUVEAU RECORD !");
             }
-
             for(let i=particles.length-1; i>=0; i--) {
                 particles[i].life -= 0.04;
                 particles[i].x += particles[i].sx;
                 particles[i].y += particles[i].sy;
                 if(particles[i].life <= 0) particles.splice(i,1);
             }
-
             ball.x += ball.dx; ball.y += ball.dy;
             if(ball.x < ball.radius) { ball.x=ball.radius; ball.dx*=-1; }
             if(ball.x > canvas.width-ball.radius) { ball.x=canvas.width-ball.radius; ball.dx*=-1; }
@@ -447,31 +427,25 @@
                     ball.dx = ball.speed * Math.sin(angle);
                     ball.dy = -ball.speed * Math.cos(angle);
                     ball.y = paddle.y - ball.radius - 1;
-                    
                     state.score++;
                     document.getElementById('liveScore').innerText = state.score;
                     spawnParticles(ball.x, paddle.y, getCurrentColor());
                 }
             }
-
             if(ball.y > canvas.height) endGame();
         }
 
         function draw() {
             ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(0,0,canvas.width, canvas.height);
-            
             const currentColor = getCurrentColor();
-
             particles.forEach(p => {
                 ctx.globalAlpha = p.life; ctx.fillStyle = p.color;
                 ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill();
             });
             ctx.globalAlpha = 1;
-
             ctx.fillStyle = '#00d4ff';
             ctx.shadowBlur = state.spacePressed ? 30 : 10; ctx.shadowColor = '#00d4ff';
             ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
-
             ctx.fillStyle = currentColor;
             ctx.shadowColor = currentColor; ctx.shadowBlur = 15;
             ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI*2); ctx.fill();
@@ -506,11 +480,8 @@
         function endGame() {
             state.running = false;
             if(state.score > state.bestScore) state.bestScore = state.score;
-            
             if(window.saveScoreOnline) window.saveScoreOnline(state.pseudo, state.score);
-            
             setTimeout(() => checkOnlineData(), 1000);
-
             document.getElementById('finalScore').innerText = state.score;
             document.getElementById('game-over-screen').style.display = 'flex';
         }
