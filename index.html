@@ -1,40 +1,51 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Jeu Kevin - Ultimate</title>
-  <style>
-    /* CSS GLOBAL */
-    body {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      min-height: 100vh;
-      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-      font-family: 'Segoe UI', Arial, sans-serif;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      color: white;
-      overflow-x: hidden;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jeu Kevin - Version Stable</title>
+    <style>
+        /* RESET ET BASE */
+        * { box-sizing: border-box; }
+        
+        body {
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+            min-height: 100vh;
+            text-align: center; /* Centre le texte et les éléments inline */
+        }
 
-    /* MISE EN PAGE */
-    .main-layout {
-      display: flex;
-      gap: 40px;
-      align-items: flex-start;
-      padding: 20px;
-      flex-wrap: wrap;
-      justify-content: center;
-    }
+        /* CONTENEUR PRINCIPAL */
+        /* On retire le flexbox complexe du body pour éviter le bug d'écran vide */
+        .container {
+            display: inline-block; /* S'adapte au contenu */
+            margin-top: 20px;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            border-radius: 20px;
+        }
 
-    .game-section {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
+        .layout-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 30px;
+            align-items: flex-start;
+        }
 
-    .
+        /* TITRES ET TEXTES */
+        h1 {
+            color: #00d4ff;
+            text-shadow: 0 0 15px rgba(0, 212, 255, 0.6);
+            margin: 0 0 10px 0;
+            font-size: 42px;
+        }
+
+        .score-display {
+            font-size: 24px;
+            margin-bottom: 15px;
+            color: #ffffff;
+            font-weight: bold;
