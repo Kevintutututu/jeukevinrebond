@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jeu Kevin - Arcade V15 Ultimate</title>
+    <title>Jeu Kevin - Arcade V16 Stable</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
     
     <script type="module">
@@ -51,7 +51,7 @@
                     await setDoc(userRef, { name: cleanName, points: points, date: now }, { merge: true });
                 }
 
-                // 3. Stats (Pièces + Parties jouées)
+                // 3. Stats
                 const statsRef = doc(db, "user_stats", cleanName);
                 await setDoc(statsRef, { 
                     name: cleanName,
@@ -63,8 +63,6 @@
         };
 
         // --- RECUPERATION DONNEES ---
-        
-        // Best Score (Pour skins)
         window.fetchUserBestScore = async (name) => {
             if(!name) return 0;
             const cleanName = name.trim().toUpperCase();
@@ -76,7 +74,6 @@
             return 0;
         };
 
-        // Records Personnels (Liste de droite)
         window.fetchPersonalRecords = async (name) => {
             const list = document.getElementById('personal-list');
             if(!list || !name) return;
@@ -85,7 +82,6 @@
             const cleanName = name.trim().toUpperCase();
 
             try {
-                // On cherche dans l'historique
                 const q = query(collection(db, "history"), where("name", "==", cleanName));
                 const snap = await getDocs(q);
                 
@@ -94,7 +90,6 @@
                     return;
                 }
 
-                // Tri local JS
                 let scores = [];
                 snap.forEach(doc => scores.push(doc.data().points));
                 scores.sort((a, b) => b - a);
@@ -109,7 +104,6 @@
             } catch (e) { list.innerHTML = "<li style='color:red; font-size:10px'>Erreur connexion</li>"; }
         };
 
-        // Données Boutique
         window.fetchUserData = async (name) => {
             if(!name) return null;
             const cleanName = name.trim().toUpperCase();
@@ -146,8 +140,6 @@
         };
 
         // --- LIVE LISTENERS ---
-        
-        // Top 10 Monde
         const qTop = query(collection(db, "best_scores"), orderBy("points", "desc"), limit(10));
         onSnapshot(qTop, (snapshot) => {
             const list = document.getElementById('score-list');
@@ -162,7 +154,6 @@
             });
         });
 
-        // 5 Dernières
         const qRecent = query(collection(db, "history"), orderBy("date", "desc"), limit(5));
         onSnapshot(qRecent, (snapshot) => {
             const list = document.getElementById('recent-list');
@@ -176,7 +167,6 @@
             });
         });
 
-        // Plus Actifs
         const qActive = query(collection(db, "user_stats"), orderBy("gamesPlayed", "desc"), limit(10));
         onSnapshot(qActive, (snapshot) => {
             const list = document.getElementById('active-list');
@@ -328,11 +318,9 @@
         
         <div id="game-column">
             <div id="canvas-wrapper">
-                <div id="encouragement-popup">NOUVEAU RECORD !<br>👑</div>
-
                 <div id="start-screen" class="overlay">
                     <h1 style="color:#00d4ff; text-shadow:0 0 20px #00d4ff; margin-bottom: 5px;">JEU KEVIN</h1>
-                    <p style="color:#888; font-size: 12px; margin-bottom: 15px;">ULTIMATE V15</p>
+                    <p style="color:#888; font-size: 12px; margin-bottom: 15px;">ULTIMATE V16 STABLE</p>
                     <p style="color:#ffd700; font-size: 16px; margin-bottom: 30px;">MEILLEUR SCORE : <span id="bestScoreDisplay">0</span></p>
                     <input type="text" id="playerNameInput" placeholder="PSEUDO" maxlength="12">
                     <button class="btn" onclick="startGame()">JOUER</button>
@@ -394,7 +382,6 @@
         const nameInput = document.getElementById('playerNameInput');
         const coinDisplay = document.getElementById('coinDisplay');
         const bestScoreDisplay = document.getElementById('bestScoreDisplay');
-        const popup = document.getElementById('encouragement-popup');
 
         // --- DATA ---
         const BACKGROUNDS = [
@@ -425,7 +412,7 @@
             coins: 0, inventory: [], equippedBg: 'bg-default',
             selectedBallColor: localStorage.getItem('kevin_color') || '#ff6b6b',
             selectedPaddleColor: localStorage.getItem('kevin_paddle_color') || '#00d4ff',
-            hue: 0, spacePressed: false, recordBroken: false
+            hue: 0, spacePressed: false
         };
 
         let ball = { x: 400, y: 300, dx: 0, dy: 0, speedBase: 400, speed: 400, radius: 8 };
@@ -433,7 +420,6 @@
         let particles = [];
         let lastTime = 0;
 
-        // --- EVENTS ---
         window.addEventListener('mousemove', (e) => {
             if(!state.running) return;
             const rect = canvas.getBoundingClientRect();
@@ -446,14 +432,12 @@
         window.addEventListener('keydown', (e) => { if(e.code === 'Space') state.spacePressed = true; });
         window.addEventListener('keyup', (e) => { if(e.code === 'Space') state.spacePressed = false; });
 
-        // --- INIT & UPDATE DATA ---
         function initMenu() {
             if(state.pseudo) { nameInput.value = state.pseudo; checkOnlineData(); }
             refreshAllSkins();
         }
 
-        // Trigger à chaque frappe pour être très réactif
-        nameInput.addEventListener('input', () => {
+        nameInput.addEventListener('blur', () => {
             state.pseudo = nameInput.value.trim().toUpperCase();
             checkOnlineData();
         });
@@ -462,14 +446,12 @@
             const name = nameInput.value.trim().toUpperCase();
             if(!name) return;
             
-            // Fetch Best Score
             if(window.fetchUserBestScore) {
                 const onlineBest = await window.fetchUserBestScore(name);
-                state.bestScore = onlineBest;
-                bestScoreDisplay.innerText = onlineBest; // MAJ VISUELLE
+                if(onlineBest > state.bestScore) state.bestScore = onlineBest;
+                bestScoreDisplay.innerText = state.bestScore;
                 refreshAllSkins();
             }
-            // Fetch User Data
             if(window.fetchUserData) {
                 const userData = await window.fetchUserData(name);
                 if(userData) {
@@ -482,13 +464,11 @@
                     updateCoinDisplay();
                 }
             }
-            // Fetch History
             if(window.fetchPersonalRecords) await window.fetchPersonalRecords(name);
         }
 
         function updateCoinDisplay() { coinDisplay.innerText = state.coins; }
 
-        // --- SHOP UI ---
         window.openShop = function() {
             if(!state.pseudo) { alert("Entre ton pseudo d'abord !"); return; }
             document.getElementById('shop-modal').style.display = 'flex';
@@ -539,14 +519,14 @@
             await window.saveEquippedBg(state.pseudo, bgId); renderShop();
         }
 
-        // --- SKINS UI ---
         function refreshAllSkins() {
             renderSkinRow(BALL_SKINS, 'ballSkinsContainer', state.selectedBallColor, (c) => { state.selectedBallColor = c; localStorage.setItem('kevin_color', c); });
             renderSkinRow(PADDLE_SKINS, 'paddleSkinsContainer', state.selectedPaddleColor, (c) => { state.selectedPaddleColor = c; localStorage.setItem('kevin_paddle_color', c); });
         }
 
         function renderSkinRow(skinsData, containerId, currentSelection, onSelect) {
-            const container = document.getElementById(containerId); container.innerHTML = '';
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
             skinsData.forEach(skin => {
                 const wrapper = document.createElement('div'); wrapper.className = 'skin-wrapper';
                 const btn = document.createElement('div'); btn.className = 'skin-btn';
@@ -564,7 +544,6 @@
             });
         }
 
-        // --- GAME ENGINE ---
         async function startGame() {
             const name = nameInput.value.trim().toUpperCase();
             if(!name) { alert("Entre un pseudo !"); return; }
@@ -577,8 +556,8 @@
         }
 
         function resetGame() {
-            state.score = 0; state.recordBroken = false;
-            document.getElementById('liveScore').innerText = '0'; popup.classList.remove('show');
+            state.score = 0;
+            document.getElementById('liveScore').innerText = '0';
             ball.x = canvas.width/2; ball.y = canvas.height/3; ball.speed = ball.speedBase;
             let angle = Math.random() * Math.PI/2 + Math.PI/4;
             ball.dx = Math.cos(angle); ball.dy = Math.sin(angle);
@@ -588,9 +567,6 @@
 
         function update(dt) {
             const delta = dt / 1000; state.hue = (state.hue + 2) % 360;
-            if(!state.recordBroken && state.score > state.bestScore && state.bestScore > 0) {
-                state.recordBroken = true; showPopup("NOUVEAU RECORD !");
-            }
             for(let i=particles.length-1; i>=0; i--) {
                 particles[i].life -= 2 * delta; particles[i].x += particles[i].sx; particles[i].y += particles[i].sy;
                 if(particles[i].life <= 0) particles.splice(i,1);
@@ -633,11 +609,6 @@
 
         function spawnParticles(x, y, color) {
             for(let i=0; i<10; i++) { particles.push({ x: x, y: y, color: color, sx: (Math.random()-0.5)*8, sy: (Math.random()-0.5)*8, size: Math.random()*3+1, life: 1 }); }
-        }
-
-        function showPopup(text) {
-            popup.innerHTML = text + "<br>👑"; popup.classList.add('show');
-            setTimeout(() => popup.classList.remove('show'), 3000);
         }
 
         function gameLoop(timestamp) {
