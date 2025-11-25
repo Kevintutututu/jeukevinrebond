@@ -12,7 +12,7 @@
         from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         // ==================================================================
-        // TES CLES SONT DEJA INTEGREES ICI :
+        // TES CLES SONT INTEGREES ICI :
         // ==================================================================
         const firebaseConfig = {
             apiKey: "AIzaSyDis3uQdBdzfuOnLF2QMfsmuSyFni2LoLU",
@@ -84,17 +84,28 @@
             font-family: 'Orbitron', sans-serif; color: white; height: 100vh; overflow: hidden;
             display: flex; justify-content: center; align-items: center; user-select: none;
         }
+        
         #game-container { display: flex; gap: 20px; align-items: flex-start; }
+
+        /* Colonne de gauche (Jeu + Skins) */
+        #game-column { display: flex; flex-direction: column; gap: 15px; }
         
         #canvas-wrapper {
             position: relative; border: 2px solid #333; background: #000;
-            width: 800px; height: 600px; border-radius: 12px;
+            width: 800px; height: 550px; border-radius: 12px; /* Hauteur réduite pour laisser place aux skins */
             box-shadow: 0 0 50px rgba(0, 212, 255, 0.1);
         }
         canvas { display: block; border-radius: 12px; width: 100%; height: 100%; }
 
+        /* Barre des Skins (Nouvel emplacement) */
+        #skins-panel {
+            width: 800px; padding: 15px; background: rgba(15, 15, 25, 0.8);
+            border: 1px solid #333; border-radius: 12px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+
         #sidebar {
-            width: 300px; height: 600px; background: rgba(15, 15, 25, 0.9);
+            width: 300px; height: 635px; background: rgba(15, 15, 25, 0.9);
             border: 1px solid #00d4ff; border-radius: 12px; padding: 20px;
             display: flex; flex-direction: column;
         }
@@ -122,17 +133,15 @@
         .btn:hover { transform: scale(1.05); box-shadow: 0 0 20px #00d4ff; }
 
         /* SKINS SELECTOR */
-        .skins-container {
-            display: flex; gap: 15px; margin-bottom: 30px; flex-wrap: wrap; justify-content: center; width: 80%;
-        }
+        .skins-container { display: flex; gap: 15px; flex-grow: 1; justify-content: center; }
         .skin-btn {
-            width: 50px; height: 50px; border-radius: 50%; border: 3px solid #333;
+            width: 40px; height: 40px; border-radius: 50%; border: 3px solid #333;
             cursor: pointer; position: relative; transition: 0.2s;
         }
         .skin-btn.locked { opacity: 0.3; cursor: not-allowed; border-color: #333; }
-        .skin-btn.locked::after { content: '🔒'; position: absolute; top: 12px; left: 12px; font-size: 16px; }
+        .skin-btn.locked::after { content: '🔒'; position: absolute; top: 8px; left: 8px; font-size: 14px; }
         .skin-btn.selected { border-color: white; transform: scale(1.2); box-shadow: 0 0 15px white; }
-        .skin-label { font-size: 10px; text-align: center; margin-top: 60px; color: #aaa; width: 100%; position: absolute; left: 0;}
+        .skin-info { color: #888; font-size: 12px; width: 150px; }
 
         /* Score HUD */
         #liveScore { position: absolute; top: 20px; left: 20px; font-size: 32px; font-weight: bold; color: #ffffff40; pointer-events: none; }
@@ -141,29 +150,33 @@
 <body>
 
     <div id="game-container">
-        <div id="canvas-wrapper">
-            
-            <div id="start-screen" class="overlay">
-                <h1 style="color:#00d4ff; text-shadow:0 0 20px #00d4ff; margin-bottom: 5px;">JEU KEVIN</h1>
-                <p style="color:#888; font-size: 12px; margin-bottom: 30px;">MEILLEUR SCORE LOCAL : <span id="bestScoreDisplay" style="color:white">0</span></p>
+        
+        <div id="game-column">
+            <div id="canvas-wrapper">
                 
-                <input type="text" id="playerNameInput" placeholder="TON PSEUDO" maxlength="12">
-                
-                <div style="margin-bottom:10px; color:#aaa; font-size:14px;">CHOISIS TA COULEUR :</div>
+                <div id="start-screen" class="overlay">
+                    <h1 style="color:#00d4ff; text-shadow:0 0 20px #00d4ff; margin-bottom: 5px;">JEU KEVIN</h1>
+                    <p style="color:#888; font-size: 12px; margin-bottom: 30px;">MEILLEUR SCORE LOCAL : <span id="bestScoreDisplay" style="color:white">0</span></p>
+                    
+                    <input type="text" id="playerNameInput" placeholder="TON PSEUDO" maxlength="12">
+                    <button class="btn" onclick="startGame()">JOUER</button>
+                </div>
+
+                <div id="game-over-screen" class="overlay" style="display:none;">
+                    <h2 style="color:#ff6b6b; font-size:48px; margin-bottom:10px;">PERDU</h2>
+                    <p style="font-size:24px; margin-bottom:30px;">Score : <span id="finalScore" style="color:#00d4ff">0</span></p>
+                    <button class="btn" onclick="returnToMenu()">MENU</button>
+                </div>
+
+                <canvas id="gameCanvas" width="800" height="550"></canvas>
+                <div id="liveScore">0</div>
+            </div>
+
+            <div id="skins-panel">
+                <div class="skin-info">CHOISIS TA COULEUR :<br><span style="font-size:10px; color:#555">Débloque-les en jouant</span></div>
                 <div class="skins-container" id="skinsContainer">
                     </div>
-
-                <button class="btn" onclick="startGame()">JOUER</button>
             </div>
-
-            <div id="game-over-screen" class="overlay" style="display:none;">
-                <h2 style="color:#ff6b6b; font-size:48px; margin-bottom:10px;">PERDU</h2>
-                <p style="font-size:24px; margin-bottom:30px;">Score : <span id="finalScore" style="color:#00d4ff">0</span></p>
-                <button class="btn" onclick="returnToMenu()">MENU</button>
-            </div>
-
-            <canvas id="gameCanvas" width="800" height="600"></canvas>
-            <div id="liveScore">0</div>
         </div>
 
         <div id="sidebar">
@@ -196,26 +209,20 @@
             pseudo: localStorage.getItem('kevin_pseudo') || "Anonyme",
             bestScore: parseInt(localStorage.getItem('kevin_best_local')) || 0,
             selectedColor: localStorage.getItem('kevin_color') || '#ff6b6b',
-            hue: 0 // Pour le rainbow
+            hue: 0
         };
 
         let ball = { x: 400, y: 300, dx: 0, dy: 0, speed: 6, radius: 8 };
-        let paddle = { x: 340, y: 560, width: 120, height: 15 };
+        let paddle = { x: 340, y: 510, width: 120, height: 15 }; // Position ajustée
         let particles = [];
 
-        // --- GESTION SOURIS (CORRECTION SORTIE CADRE) ---
-        // On écoute 'window' au lieu de 'canvas' pour ne jamais perdre le contrôle
+        // --- GESTION SOURIS (Sur toute la fenêtre) ---
         window.addEventListener('mousemove', (e) => {
             if(!state.running) return;
             const rect = canvas.getBoundingClientRect();
-            // Calcul position relative au canvas même si la souris est dehors
             const scaleX = canvas.width / rect.width;
             let relativeX = (e.clientX - rect.left) * scaleX;
-            
-            // On centre la raquette
             paddle.x = relativeX - (paddle.width / 2);
-
-            // Limites
             if(paddle.x < 0) paddle.x = 0;
             if(paddle.x > canvas.width - paddle.width) paddle.x = canvas.width - paddle.width;
         });
@@ -227,20 +234,25 @@
             renderSkins();
         }
 
-        // Vérification du score en ligne si le pseudo change
-        nameInput.addEventListener('blur', async () => {
+        // Mise à jour dynamique des skins lors de la frappe du pseudo
+        nameInput.addEventListener('input', async () => {
+            state.pseudo = nameInput.value.trim();
+        });
+
+        // Vérification online au changement de focus ou lancement
+        async function checkOnlineScore() {
             const name = nameInput.value.trim();
             if(name && window.fetchUserBestScore) {
-                // On va chercher le score en ligne pour voir si le joueur a débloqué des trucs
                 const onlineBest = await window.fetchUserBestScore(name);
                 if(onlineBest > state.bestScore) {
                     state.bestScore = onlineBest;
                     localStorage.setItem('kevin_best_local', onlineBest);
                     bestScoreDisplay.innerText = onlineBest;
-                    renderSkins(); // Mettre à jour les cadenas
+                    renderSkins();
                 }
             }
-        });
+        }
+        nameInput.addEventListener('blur', checkOnlineScore);
 
         function renderSkins() {
             skinsContainer.innerHTML = '';
@@ -248,28 +260,19 @@
                 const btn = document.createElement('div');
                 btn.className = 'skin-btn';
                 
-                // Gestion Rainbow ou Couleur unie
                 if(skin.color === 'rainbow') {
                     btn.style.background = 'linear-gradient(45deg, red, orange, yellow, green, blue, violet)';
                 } else {
                     btn.style.background = skin.color;
                 }
 
-                // Verrouillage
                 if(state.bestScore < skin.score) {
                     btn.classList.add('locked');
-                    btn.title = `Débloquer à ${skin.score} pts`;
+                    btn.title = `Score requis : ${skin.score}`;
                 } else {
                     btn.onclick = () => selectSkin(skin.color);
                     if(state.selectedColor === skin.color) btn.classList.add('selected');
                 }
-
-                // Label
-                const label = document.createElement('div');
-                label.className = 'skin-label';
-                label.innerText = skin.name;
-                btn.appendChild(label);
-
                 skinsContainer.appendChild(btn);
             });
         }
@@ -281,10 +284,13 @@
         }
 
         // --- MOTEUR DE JEU ---
-        function startGame() {
+        async function startGame() {
             const name = nameInput.value.trim() || "Anonyme";
             state.pseudo = name;
             localStorage.setItem('kevin_pseudo', name);
+            
+            // Dernière vérif avant de lancer
+            await checkOnlineScore();
 
             document.getElementById('start-screen').style.display = 'none';
             document.getElementById('game-over-screen').style.display = 'none';
@@ -307,10 +313,8 @@
         }
 
         function update() {
-            // Couleur Rainbow dynamique
             state.hue = (state.hue + 2) % 360;
 
-            // Particules
             for(let i=particles.length-1; i>=0; i--) {
                 particles[i].life -= 0.04;
                 particles[i].x += particles[i].sx;
@@ -318,20 +322,17 @@
                 if(particles[i].life <= 0) particles.splice(i,1);
             }
 
-            // Physique Balle
             ball.x += ball.dx; ball.y += ball.dy;
 
-            // Murs
             if(ball.x < ball.radius) { ball.x=ball.radius; ball.dx*=-1; }
             if(ball.x > canvas.width-ball.radius) { ball.x=canvas.width-ball.radius; ball.dx*=-1; }
             if(ball.y < ball.radius) { ball.y=ball.radius; ball.dy*=-1; }
 
-            // Raquette
             if(ball.y + ball.radius >= paddle.y && ball.y - ball.radius <= paddle.y + paddle.height && ball.dy > 0) {
                 if(ball.x >= paddle.x && ball.x <= paddle.x + paddle.width) {
                     let hit = (ball.x - (paddle.x + paddle.width/2)) / (paddle.width/2);
                     let angle = hit * (Math.PI/3);
-                    ball.speed = Math.min(ball.speed + 0.5, 20); // Max speed 20
+                    ball.speed = Math.min(ball.speed + 0.5, 20);
                     ball.dx = ball.speed * Math.sin(angle);
                     ball.dy = -ball.speed * Math.cos(angle);
                     ball.y = paddle.y - ball.radius - 1;
@@ -342,18 +343,15 @@
                 }
             }
 
-            // Perdu
             if(ball.y > canvas.height) endGame();
         }
 
         function draw() {
-            // Trail
             ctx.fillStyle = 'rgba(0,0,0,0.25)';
             ctx.fillRect(0,0,canvas.width, canvas.height);
 
             const currentColor = getCurrentColor();
 
-            // Particules
             particles.forEach(p => {
                 ctx.globalAlpha = p.life;
                 ctx.fillStyle = p.color;
@@ -361,23 +359,18 @@
             });
             ctx.globalAlpha = 1;
 
-            // Raquette
             ctx.fillStyle = '#00d4ff';
             ctx.shadowBlur = 15; ctx.shadowColor = '#00d4ff';
             ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
 
-            // Balle
             ctx.fillStyle = currentColor;
             ctx.shadowColor = currentColor;
             ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI*2); ctx.fill();
-            
             ctx.shadowBlur = 0;
         }
 
         function getCurrentColor() {
-            if(state.selectedColor === 'rainbow') {
-                return `hsl(${state.hue}, 100%, 50%)`;
-            }
+            if(state.selectedColor === 'rainbow') return `hsl(${state.hue}, 100%, 50%)`;
             return state.selectedColor;
         }
 
@@ -401,12 +394,11 @@
 
         function endGame() {
             state.running = false;
-            // Gestion High Score Local
             if(state.score > state.bestScore) {
                 state.bestScore = state.score;
                 localStorage.setItem('kevin_best_local', state.score);
+                renderSkins(); // Débloque les skins instantanément
             }
-            // Sauvegarde Cloud
             if(window.saveScoreOnline) window.saveScoreOnline(state.pseudo, state.score);
 
             document.getElementById('finalScore').innerText = state.score;
@@ -416,12 +408,10 @@
         function returnToMenu() {
             document.getElementById('game-over-screen').style.display = 'none';
             document.getElementById('start-screen').style.display = 'flex';
-            initMenu(); // Recharger le menu pour mettre à jour les cadenas
-            // Effacer l'écran
+            initMenu();
             ctx.fillStyle = 'black'; ctx.fillRect(0,0,canvas.width,canvas.height);
         }
 
-        // Démarrage
         initMenu();
         ctx.fillStyle = 'black'; ctx.fillRect(0,0,canvas.width,canvas.height);
 
