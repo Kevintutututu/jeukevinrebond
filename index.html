@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jeu Kevin - Arcade V39 FINAL</title>
+    <title>Jeu Kevin - Arcade V39 Final Fix</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; }
@@ -13,7 +13,7 @@
             display: flex; flex-direction: column; justify-content: center; align-items: center; user-select: none;
         }
 
-        /* --- ZONES DE JEU --- */
+        /* WRAPPER */
         #canvas-wrapper {
             position: relative; border: 2px solid #333; background: #000;
             width: 800px; height: 500px; border-radius: 12px;
@@ -39,6 +39,11 @@
         /* LAYOUT */
         #main-layout { display: flex; gap: 20px; align-items: flex-start; height: 80vh; width: 95%; max-width: 1400px; justify-content: center; z-index: 5; }
         #game-column { display: flex; flex-direction: column; gap: 15px; }
+        
+        /* ZONE DROITE (Important pour le sac) */
+        #data-zone { 
+            display: flex; gap: 15px; height: 100%; position: relative; 
+        }
 
         /* UI TOP LEFT */
         #top-left-ui { position: absolute; top: 20px; left: 20px; z-index: 50; display: flex; gap: 15px; align-items: center; }
@@ -64,7 +69,7 @@
             background: radial-gradient(circle at 30% 30%, #ffd700, #b8860b);
             border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 20px #ffd700;
             display: flex; justify-content: center; align-items: center; font-size: 30px;
-            cursor: pointer; z-index: 2147483647;
+            cursor: pointer; z-index: 2147483647; /* MAXIMAL */
             transition: top 1s linear, left 1s linear;
         }
         #coin-bag:active { transform: scale(0.9); }
@@ -79,7 +84,6 @@
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 10px; }
         .btn-close { background: #ff4757; color: white; border: none; padding: 5px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
         
-        /* SHOP GRID */
         .shop-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; overflow-y: auto; padding-right: 10px; }
         .shop-item { background: #222; border: 1px solid #444; border-radius: 10px; padding: 10px; display: flex; flex-direction: column; align-items: center; gap: 5px; transition: 0.2s; }
         .shop-item:hover { border-color: #ffd700; }
@@ -91,7 +95,7 @@
 
         /* SIDEBARS */
         .sidebar-column { width: 260px; height: 635px; display: flex; flex-direction: column; gap: 15px; }
-        .sidebar-box { background: rgba(15, 15, 25, 0.9); border: 1px solid #00d4ff; border-radius: 12px; padding: 15px; display: flex; flex-direction: column; box-shadow: 0 0 20px rgba(0,0,0,0.5); overflow: hidden;}
+        .sidebar-box { background: rgba(15, 15, 25, 0.9); border: 1px solid #00d4ff; border-radius: 12px; padding: 15px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
         .box-top10 { flex: 3; } .box-recent { flex: 2; border-color: #ff4757; } .box-perso { flex: 3; border-color: #ff6b6b; } .box-active { flex: 2; border-color: #2ecc71; }
         h2 { text-align: center; margin-top: 0; font-size: 14px; border-bottom: 2px solid; padding-bottom: 8px; margin-bottom: 8px; text-transform: uppercase; }
         .title-blue { color: #00d4ff; border-color: #00d4ff33; } .title-red { color: #ff4757; border-color: #ff475733; }
@@ -115,7 +119,6 @@
         .footer-scroll { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(0,0,0,0.9); border-top: 1px solid #333; height: 30px; overflow: hidden; display: flex; align-items: center; z-index: 100; }
         .scrolling-text { animation: scroll 20s linear infinite; color: #00d4ff; font-size: 12px; white-space: nowrap; padding-left: 100%; }
         @keyframes scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
-
         .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 20; display: flex; flex-direction: column; justify-content: center; align-items: center; border-radius: 12px; }
         input { padding: 15px; font-size: 20px; background: #0f0f1e; border: 2px solid #00d4ff; color: white; text-align: center; border-radius: 8px; outline: none; margin-bottom: 20px; text-transform: uppercase; }
         .btn { padding: 15px 50px; font-size: 22px; background: linear-gradient(90deg, #00d4ff, #005bea); border: none; color: white; font-weight: bold; cursor: pointer; border-radius: 50px; }
@@ -243,16 +246,16 @@
         const levelText = document.getElementById('level-text');
         const xpBarFill = document.getElementById('xp-bar-fill');
         
-        // EVENT LISTENERS INIT
-        document.getElementById('settings-btn').addEventListener('click', () => document.getElementById('admin-modal').style.display = 'flex');
-        document.getElementById('close-admin').addEventListener('click', () => document.getElementById('admin-modal').style.display = 'none');
-        document.getElementById('shop-btn-container').addEventListener('click', openShop);
-        document.getElementById('close-shop').addEventListener('click', () => document.getElementById('shop-modal').style.display = 'none');
-        document.getElementById('validate-admin').addEventListener('click', checkAdminCode);
-        document.getElementById('dlBtn').addEventListener('click', downloadDatabase);
-        document.getElementById('play-btn').addEventListener('click', startGame);
-        document.getElementById('menu-btn').addEventListener('click', returnToMenu);
-
+        // LISTENERS INIT
+        document.getElementById('settings-btn').onclick = () => document.getElementById('admin-modal').style.display = 'flex';
+        document.getElementById('close-admin').onclick = () => document.getElementById('admin-modal').style.display = 'none';
+        document.getElementById('shop-btn-container').onclick = openShop;
+        document.getElementById('close-shop').onclick = () => document.getElementById('shop-modal').style.display = 'none';
+        document.getElementById('validate-admin').onclick = checkAdminCode;
+        document.getElementById('dlBtn').onclick = downloadDatabase;
+        document.getElementById('play-btn').onclick = startGame;
+        document.getElementById('menu-btn').onclick = returnToMenu;
+        
         // CONSTANTS
         const BACKGROUNDS = [
             { id: 'bg-default', name: 'PAR DEFAUT', type: 'basic', css: '#000', price: 0 },
@@ -281,7 +284,8 @@
         let state = {
             running: false, score: 0, pseudo: localStorage.getItem('kevin_pseudo') || "", bestScore: 0,
             coins: 0, inventory: [], equippedBg: 'bg-default',
-            selectedBallColor: '#ff6b6b', selectedPaddleColor: '#00d4ff',
+            selectedBallColor: localStorage.getItem('kevin_color') || '#ff6b6b',
+            selectedPaddleColor: localStorage.getItem('kevin_paddle_color') || '#00d4ff',
             hue: 0, spacePressed: false, totalXP: 0, level: 1
         };
 
@@ -293,15 +297,15 @@
         let bagElement = null;
         let bagTimerInterval;
 
-        // --- LEVEL SYSTEM (150 points/level) ---
-        function calculateLevel(xp) { return Math.floor(xp / 150) + 1; }
-        function getXpForNextLevel(level) { return level * 150; }
+        // --- LEVELS ---
+        function calculateLevel(xp) { return Math.floor(Math.sqrt(xp / 100)) + 1; }
+        function getXpForNextLevel(level) { return Math.pow(level, 2) * 100; }
         function updateLevelDisplay() {
             state.level = calculateLevel(state.totalXP);
             levelText.innerText = `NIV ${state.level}`;
-            const currentLevelStart = (state.level - 1) * 150;
-            const nextLevelStart = state.level * 150;
-            const progress = (state.totalXP - currentLevelStart) / (nextLevelStart - currentLevelStart);
+            const nextLevelXP = getXpForNextLevel(state.level);
+            const prevLevelXP = getXpForNextLevel(state.level - 1);
+            const progress = (state.totalXP - prevLevelXP) / (nextLevelXP - prevLevelXP);
             const percent = Math.min(100, Math.max(0, progress * 100));
             xpBarFill.style.width = `${percent}%`;
         }
@@ -331,9 +335,10 @@
             zone.appendChild(bagElement);
 
             bagElement.onclick = () => {
-                const reward = 5 + Math.floor(Math.random() * 26); // 5-30
+                const reward = 5 + Math.floor(Math.random() * 26);
                 state.coins += reward; updateCoinDisplay();
                 if(state.pseudo) addFreeCoins(state.pseudo, reward);
+                
                 const fb = document.createElement('div'); fb.className = 'coin-popup';
                 const bagRect = bagElement.getBoundingClientRect(); 
                 fb.style.left = bagRect.left + 'px'; fb.style.top = bagRect.top + 'px';
@@ -388,11 +393,12 @@
                     totalPoints = data.totalAllPoints || 0;
                 }
                 myRecords.push(points); myRecords.sort((a, b) => b - a); myRecords = myRecords.slice(0, 10);
+                const newPlays = currentPlays + 1;
                 const newTotalPoints = totalPoints + points;
-                const newXP = newTotalPoints; // XP = Total Score
+                const newXP = newTotalPoints * newPlays;
                 
                 await setDoc(userRef, { 
-                    name: cleanName, gamesPlayed: increment(1), coins: currentCoins + earnedCoins,
+                    name: cleanName, gamesPlayed: newPlays, coins: currentCoins + earnedCoins,
                     personalRecords: myRecords, inventory: currentInventory, equippedBg: currentEquipped,
                     totalAllPoints: newTotalPoints, xp: newXP
                 }, { merge: true });
@@ -407,14 +413,7 @@
             try { await setDoc(doc(db, "user_stats", name.trim().toUpperCase()), { coins: increment(amount) }, { merge: true }); } catch (e) {}
         }
 
-        // --- RESET STATE ON NEW USER ---
-        function resetState() {
-            state.coins = 0; state.inventory = []; state.equippedBg = 'bg-default';
-            state.bestScore = 0; state.totalXP = 0; state.level = 1;
-            bestScoreDisplay.innerText = 0; updateLevelDisplay(); updateCoinDisplay();
-            document.getElementById('canvas-wrapper').className = 'bg-default';
-            displayPersonalRecords([]);
-        }
+        nameInput.addEventListener('blur', () => { state.pseudo = nameInput.value.trim().toUpperCase(); checkOnlineData(); });
 
         async function checkOnlineData() {
             const name = nameInput.value.trim().toUpperCase();
@@ -425,10 +424,8 @@
                 const docRef = doc(db, "best_scores", name);
                 const snap = await getDoc(docRef);
                 if(snap.exists()) { state.bestScore = snap.data().points; bestScoreDisplay.innerText = state.bestScore; refreshAllSkins(); }
-                else { state.bestScore = 0; bestScoreDisplay.innerText = 0; refreshAllSkins(); }
             } catch(e) {}
-
-            // User Stats
+            // User Data
             try {
                 const docRef = doc(db, "user_stats", name);
                 const snap = await getDoc(docRef);
@@ -437,21 +434,48 @@
                     state.coins = d.coins || 0; state.inventory = d.inventory || [];
                     state.totalXP = d.xp || 0; updateLevelDisplay();
                     if(d.equippedBg) { state.equippedBg = d.equippedBg; document.getElementById('canvas-wrapper').className = d.equippedBg; }
-                    if(d.personalRecords) displayPersonalRecords(d.personalRecords);
+                    if(d.personalRecords && d.personalRecords.length > 0) { 
+                         // Load from profile (Fast)
+                         displayPersonalRecords(d.personalRecords);
+                    } else {
+                         // Fallback: Load from history if new profile structure (Slow but needed once)
+                         fetchPersonalRecordsFallback(name);
+                    }
                     updateCoinDisplay();
                 } else {
-                    // NEW USER -> RESET
-                    resetState();
-                    // Try fallback if really needed, but better clean slate
-                    // fetchPersonalRecordsFallback(name);
+                    // New User: Try fallback just in case, else clean slate
+                    fetchPersonalRecordsFallback(name);
+                    state.bestScore = 0; bestScoreDisplay.innerText = 0;
+                    refreshAllSkins(); 
                 }
             } catch(e) {}
         }
 
+        async function fetchPersonalRecordsFallback(name) {
+            const q = query(collection(db, "history"), where("name", "==", name));
+            const snap = await getDocs(q);
+            let scores = [];
+            snap.forEach(doc => scores.push(doc.data().points));
+            scores.sort((a,b) => b-a);
+            scores = scores.slice(0, 10);
+            if(scores.length > 0) {
+                displayPersonalRecords(scores);
+                // Save to profile to avoid slow fetch next time
+                setDoc(doc(db, "user_stats", name), { personalRecords: scores }, { merge: true });
+            } else {
+                displayPersonalRecords([]);
+            }
+        }
+
         function displayPersonalRecords(scores) {
-            const list = document.getElementById('personal-list'); if(!list) return; list.innerHTML = "";
+            const list = document.getElementById('personal-list');
+            if(!list) return; list.innerHTML = "";
             if(!scores || scores.length === 0) { list.innerHTML = "<li style='justify-content:center; color:#555;'>Aucun record</li>"; return; }
-            scores.forEach((s, index) => { list.innerHTML += `<li><span>#${index+1}</span> <span style="color:#00d4ff">${s}</span></li>`; });
+            scores.forEach((s, index) => {
+                const li = document.createElement('li');
+                li.innerHTML = `<span>#${index+1}</span> <span style="color:#00d4ff">${s}</span>`;
+                list.appendChild(li);
+            });
         }
 
         function updateCoinDisplay() { coinDisplay.innerText = state.coins; }
@@ -463,7 +487,7 @@
             try {
                 const bestScoresSnap = await getDocs(collection(db, "best_scores"));
                 const userStatsSnap = await getDocs(collection(db, "user_stats"));
-                let data = { exportDate: new Date().toISOString(), best_scores: [], user_stats: [] };
+                let data = { exportDate: new Date().toISOString(), best_scores: [], user_stats: [], history: [] };
                 bestScoresSnap.forEach(doc => data.best_scores.push(doc.data()));
                 userStatsSnap.forEach(doc => data.user_stats.push(doc.data()));
                 const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
@@ -638,7 +662,6 @@
             if(snap.exists()) document.getElementById('avgScore').innerText = Math.round(snap.data().totalPoints/snap.data().totalGames) || 0;
         });
 
-        // INIT
         initMenu();
         initCoinBagLoop();
         ctx.clearRect(0, 0, 800, 500);
