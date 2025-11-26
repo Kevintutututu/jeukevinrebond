@@ -337,7 +337,7 @@
 
         // --- COIN BAG (SIMPLE & SAFE) ---
         function initCoinBag() {
-            setInterval(spawnBag, 120000);
+            setInterval(spawnBag, 30000);
         }
         function spawnBag() {
             const existing = document.getElementById('coin-bag');
@@ -346,7 +346,7 @@
             const bag = document.createElement('div');
             bag.id = 'coin-bag'; bag.innerHTML = '💰';
             
-            const t = document.createElement('div'); t.className = 'bag-timer'; t.innerText = "10s";
+            const t = document.createElement('div'); t.className = 'bag-timer'; t.innerText = "20s";
             bag.appendChild(t);
 
             const x = Math.random() * (window.innerWidth - 100);
@@ -355,7 +355,7 @@
 
             // Click
             bag.onclick = () => {
-                const reward = 5 + Math.floor(Math.random() * 20);
+                const reward = 50 + Math.floor(Math.random() * 200);
                 state.coins += reward; updateCoinDisplay();
                 if(state.pseudo) {
                     setDoc(doc(db, "user_stats", state.pseudo.trim().toUpperCase()), { coins: increment(reward) }, { merge: true });
@@ -373,7 +373,7 @@
             }, 2000);
 
             // Timer
-            let time = 10;
+            let time = 20;
             let timerInt = setInterval(() => {
                 time--; t.innerText = time + "s";
                 if(time <= 0) { bag.remove(); clearInterval(timerInt); clearInterval(moveInterval); }
