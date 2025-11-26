@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jeu Kevin - Arcade V21 Admin</title>
+    <title>Jeu Kevin - Arcade V22 Ultimate</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
     
     <script type="module">
@@ -26,7 +26,7 @@
 
         let lastSaveTime = 0;
 
-        // --- SAUVEGARDE ---
+        // --- SAUVEGARDE (OPTIMISÉE AVEC MOYENNE) ---
         window.saveGameResults = async (name, points, earnedCoins) => {
             if(!name || points === 0) return;
             const now = Date.now();
@@ -35,8 +35,10 @@
             const cleanName = name.trim().toUpperCase();
 
             try {
-                addDoc(collection(db, "history"), { name: cleanName, points: points, date: now });
+                // 1. Historique
+                await addDoc(collection(db, "history"), { name: cleanName, points: points, date: now });
 
+                // 2. Best Score Unique
                 const bestRef = doc(db, "best_scores", cleanName);
                 getDoc(bestRef).then(snap => {
                     if (!snap.exists() || points > snap.data().points) {
@@ -44,35 +46,40 @@
                     }
                 });
 
+                // 3. Stats Joueur
                 const userRef = doc(db, "user_stats", cleanName);
+                // Mise à jour atomique des stats joueur (lecture inutile ici, on utilise increment)
+                // Note: Pour le tableau personalRecords, on doit lire, mais on peut optimiser plus tard.
+                // Pour l'instant on garde la logique V21 qui marche bien.
                 const userSnap = await getDoc(userRef);
-                
                 let myRecords = [];
                 let currentInventory = [];
                 let currentEquipped = 'bg-default';
-                let currentPlays = 0;
-                let currentCoins = 0;
-
+                
                 if(userSnap.exists()) {
                     const data = userSnap.data();
                     myRecords = data.personalRecords || [];
                     currentInventory = data.inventory || [];
                     currentEquipped = data.equippedBg || 'bg-default';
-                    currentPlays = data.gamesPlayed || 0;
-                    currentCoins = data.coins || 0;
                 }
-
                 myRecords.push(points);
                 myRecords.sort((a, b) => b - a);
                 myRecords = myRecords.slice(0, 10);
 
                 await setDoc(userRef, { 
                     name: cleanName,
-                    gamesPlayed: currentPlays + 1,
-                    coins: currentCoins + earnedCoins,
+                    gamesPlayed: increment(1),
+                    coins: increment(earnedCoins),
                     personalRecords: myRecords,
                     inventory: currentInventory,
                     equippedBg: currentEquipped
+                }, { merge: true });
+
+                // 4. MISE A JOUR MOYENNE GLOBALE (Nouveau !)
+                const globalStatsRef = doc(db, "stats", "global");
+                await setDoc(globalStatsRef, {
+                    totalPoints: increment(points),
+                    totalGames: increment(1)
                 }, { merge: true });
 
                 displayPersonalRecords(myRecords);
@@ -158,65 +165,29 @@
             await setDoc(statsRef, { equippedBg: bgId }, { merge: true });
         };
 
-        // --- ADMINISTRATION / EXPORT BDD ---
+        // --- ADMIN / EXPORT ---
         window.checkAdminCode = () => {
-            const code = document.getElementById('adminCodeInput').value;
-            const errorMsg = document.getElementById('adminError');
-            const panel = document.getElementById('adminPanel');
-            const login = document.getElementById('adminLogin');
-
-            if(code === "KC2523COUEDRO") {
-                errorMsg.style.display = 'none';
-                login.style.display = 'none';
-                panel.style.display = 'flex';
-            } else {
-                errorMsg.style.display = 'block';
-            }
+            if(document.getElementById('adminCodeInput').value === "KC2523COUEDRO") {
+                document.getElementById('adminLogin').style.display = 'none';
+                document.getElementById('adminPanel').style.display = 'flex';
+            } else { document.getElementById('adminError').style.display = 'block'; }
         };
 
         window.downloadDatabase = async () => {
-            const btn = document.getElementById('dlBtn');
-            btn.innerText = "TÉLÉCHARGEMENT...";
-            btn.disabled = true;
-
+            const btn = document.getElementById('dlBtn'); btn.innerText = "TÉLÉCHARGEMENT..."; btn.disabled = true;
             try {
-                // Récupération de toutes les collections importantes
                 const bestScoresSnap = await getDocs(collection(db, "best_scores"));
                 const userStatsSnap = await getDocs(collection(db, "user_stats"));
                 const historySnap = await getDocs(collection(db, "history"));
-
-                let data = {
-                    exportDate: new Date().toISOString(),
-                    best_scores: [],
-                    user_stats: [],
-                    history: []
-                };
-
+                let data = { exportDate: new Date().toISOString(), best_scores: [], user_stats: [], history: [] };
                 bestScoresSnap.forEach(doc => data.best_scores.push(doc.data()));
                 userStatsSnap.forEach(doc => data.user_stats.push(doc.data()));
                 historySnap.forEach(doc => data.history.push(doc.data()));
-
-                // Création du fichier JSON
-                const dataStr = JSON.stringify(data, null, 2);
-                const blob = new Blob([dataStr], { type: "application/json" });
-                const url = URL.createObjectURL(blob);
-                
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `kevin_arcade_backup_${Date.now()}.json`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-
-                btn.innerText = "SUCCÈS !";
-                setTimeout(() => { btn.innerText = "TÉLÉCHARGER LA BDD"; btn.disabled = false; }, 2000);
-
-            } catch (e) {
-                console.error(e);
-                btn.innerText = "ERREUR (Voir Console)";
-                btn.disabled = false;
-            }
+                const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+                const a = document.createElement('a'); a.href = url; a.download = `kevin_arcade_backup_${Date.now()}.json`;
+                document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+                btn.innerText = "SUCCÈS !"; setTimeout(() => { btn.innerText = "TÉLÉCHARGER LA BDD"; btn.disabled = false; }, 2000);
+            } catch (e) { console.error(e); btn.innerText = "ERREUR"; btn.disabled = false; }
         };
 
         // --- LISTENERS LIVE ---
@@ -226,8 +197,7 @@
             if(!list) return; list.innerHTML = "";
             let rank = 1;
             snapshot.forEach((doc) => {
-                const s = doc.data();
-                const li = document.createElement('li');
+                const s = doc.data(); const li = document.createElement('li');
                 let color = rank === 1 ? '#ffd700' : (rank === 2 ? '#c0c0c0' : (rank === 3 ? '#cd7f32' : 'white'));
                 let medal = rank === 1 ? '<span style="margin-right:5px;">👑</span>' : '';
                 li.innerHTML = `<div style="display:flex; align-items:center; gap:5px;"><span style="opacity:0.5; width:20px;">#${rank}</span><span style="color:${color}; font-weight:bold;">${medal}${s.name}</span></div><span style="color:#00d4ff;">${s.points}</span>`;
@@ -240,8 +210,7 @@
             const list = document.getElementById('recent-list');
             if(!list) return; list.innerHTML = "";
             snapshot.forEach((doc) => {
-                const s = doc.data();
-                const li = document.createElement('li');
+                const s = doc.data(); const li = document.createElement('li');
                 li.style.borderColor = "#ff475733";
                 li.innerHTML = `<span style="color:#aaa; font-size:12px;">${s.name}</span><span style="color:#ff4757; font-weight:bold;">${s.points} pts</span>`;
                 list.appendChild(li);
@@ -254,13 +223,28 @@
             if(!list) return; list.innerHTML = "";
             let rank = 1;
             snapshot.forEach((doc) => {
-                const s = doc.data();
-                const li = document.createElement('li');
+                const s = doc.data(); const li = document.createElement('li');
                 li.style.borderColor = "#2ecc7133";
                 li.innerHTML = `<div style="display:flex; gap:10px;"><span style="opacity:0.5; width:20px;">#${rank}</span><span style="color:#fff;">${s.name}</span></div><span style="color:#2ecc71;">${s.gamesPlayed || 0}</span>`;
                 list.appendChild(li); rank++;
             });
         });
+
+        // --- ECOUTEUR MOYENNE GLOBALE ---
+        const globalStatsRef = doc(db, "stats", "global");
+        onSnapshot(globalStatsRef, (docSnap) => {
+            const el = document.getElementById('avgScore');
+            if(docSnap.exists()) {
+                const data = docSnap.data();
+                const avg = data.totalGames > 0 ? Math.round(data.totalPoints / data.totalGames) : 0;
+                if(el) el.innerText = avg;
+            } else {
+                // Initialisation automatique si pas de données (Basé sur ton backup)
+                setDoc(globalStatsRef, { totalPoints: 7567, totalGames: 329 });
+                if(el) el.innerText = "23";
+            }
+        });
+
     </script>
 
     <style>
@@ -284,10 +268,7 @@
         #canvas-wrapper.bg-red { background: linear-gradient(135deg, #300, #000); }
         #canvas-wrapper.bg-blue { background: linear-gradient(135deg, #003, #000); }
         #canvas-wrapper.bg-green { background: linear-gradient(135deg, #030, #000); }
-        #canvas-wrapper.bg-rsb { 
-            background-color: #ffffff;
-            background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Ctext x='50' y='50' font-family='Arial' font-weight='bold' font-size='24' fill='%23000080' opacity='0.15' text-anchor='middle' dominant-baseline='central' transform='rotate(-30 50 50)'%3ERSB%3C/text%3E%3C/svg%3E");
-        }
+        #canvas-wrapper.bg-rsb { background-color: #ffffff; background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Ctext x='50' y='50' font-family='Arial' font-weight='bold' font-size='24' fill='%23000080' opacity='0.15' text-anchor='middle' dominant-baseline='central' transform='rotate(-30 50 50)'%3ERSB%3C/text%3E%3C/svg%3E"); }
         #canvas-wrapper.bg-space { background: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%); }
         #canvas-wrapper.bg-rainbow { background: linear-gradient(45deg, #ff0000, #ff7300, #fffb00, #48ff00, #00ffd5, #002bff, #7a00ff, #ff00c8, #ff0000); background-size: 400%; animation: rainbow 20s linear infinite; }
         #canvas-wrapper.bg-forest { background: linear-gradient(to bottom, #134e5e, #71b280); }
@@ -300,17 +281,13 @@
         #main-layout { display: flex; gap: 20px; align-items: flex-start; height: 80vh; width: 95%; max-width: 1400px; justify-content: center; z-index: 5; }
         #game-column { display: flex; flex-direction: column; gap: 15px; }
 
-        /* TOP LEFT UI (Shop + Settings) */
-        #top-left-ui {
-            position: absolute; top: 20px; left: 20px; z-index: 50;
-            display: flex; gap: 10px; align-items: center;
-        }
-
+        /* UI TOP LEFT */
+        #top-left-ui { position: absolute; top: 20px; left: 20px; z-index: 50; display: flex; gap: 15px; align-items: center; }
+        
         #settings-btn {
             width: 40px; height: 40px; background: rgba(0,0,0,0.8);
             border: 2px solid #888; border-radius: 50%; cursor: pointer;
-            display: flex; justify-content: center; align-items: center; font-size: 20px;
-            transition: 0.2s;
+            display: flex; justify-content: center; align-items: center; font-size: 20px; transition: 0.2s;
         }
         #settings-btn:hover { border-color: #fff; transform: rotate(90deg); }
 
@@ -323,15 +300,16 @@
         .shop-icon { font-size: 20px; }
         .coin-balance { font-size: 16px; color: #ffd700; font-weight: bold; }
 
-        /* Modals */
-        .modal-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.95); z-index: 100; display: none;
-            flex-direction: column; align-items: center; justify-content: center;
+        /* Average Score Widget */
+        #avg-score-container {
+            background: rgba(0,0,0,0.8); padding: 8px 15px; border-radius: 30px;
+            border: 1px solid #fff; color: white; font-size: 12px; font-weight: bold;
         }
+
+        /* Modals */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 100; display: none; flex-direction: column; align-items: center; justify-content: center; }
         .modal-content { width: 800px; height: 600px; background: #15151f; border: 2px solid #ffd700; border-radius: 15px; padding: 20px; display: flex; flex-direction: column; }
         .admin-content { width: 400px; height: auto; border-color: #888; padding: 30px; text-align: center; }
-        
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 10px; }
         .btn-close { background: #ff4757; color: white; border: none; padding: 5px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
 
@@ -400,6 +378,7 @@
             <span class="coin-balance" id="coinDisplay">0</span>
             <span style="font-size:10px; color:#aaa; margin-left:3px;">KEV COINS</span>
         </div>
+        <div id="avg-score-container">Moyenne des scores = <span id="avgScore">--</span></div>
     </div>
 
     <div id="admin-modal" class="modal-overlay">
@@ -408,18 +387,15 @@
                 <h2 style="color:#888; border:none;">ADMINISTRATION</h2>
                 <button class="btn-close" onclick="closeAdminModal()">X</button>
             </div>
-            
             <div id="adminLogin">
                 <p style="color:#aaa; margin-bottom:20px;">Entrez le code sécurisé</p>
                 <input type="password" id="adminCodeInput" placeholder="CODE" style="width:100%;">
                 <button class="btn" style="width:100%; font-size:16px;" onclick="checkAdminCode()">VALIDER</button>
                 <p id="adminError" style="color:red; display:none; margin-top:10px;">Code incorrect</p>
             </div>
-
             <div id="adminPanel" style="display:none; flex-direction:column; gap:20px; align-items:center;">
                 <p style="color:#2ecc71;">Accès Autorisé</p>
                 <button id="dlBtn" class="btn" style="width:100%; font-size:14px; background:#00d4ff;" onclick="downloadDatabase()">TÉLÉCHARGER LA BDD</button>
-                <p style="font-size:10px; color:#666;">Format JSON (Historique + Scores + Users)</p>
             </div>
         </div>
     </div>
@@ -439,7 +415,7 @@
             <div id="canvas-wrapper">
                 <div id="start-screen" class="overlay">
                     <h1 style="color:#00d4ff; text-shadow:0 0 20px #00d4ff; margin-bottom: 5px;">JEU KEVIN</h1>
-                    <p style="color:#888; font-size: 12px; margin-bottom: 15px;">ULTIMATE V21 ADMIN</p>
+                    <p style="color:#888; font-size: 12px; margin-bottom: 15px;">ULTIMATE V22</p>
                     <p style="color:#ffd700; font-size: 16px; margin-bottom: 30px;">MEILLEUR SCORE : <span id="bestScoreDisplay">0</span></p>
                     <input type="text" id="playerNameInput" placeholder="PSEUDO" maxlength="12">
                     <button class="btn" onclick="startGame()">JOUER</button>
@@ -589,21 +565,12 @@
 
         function updateCoinDisplay() { coinDisplay.innerText = state.coins; }
 
-        // ADMIN UI
-        window.openAdminModal = () => document.getElementById('admin-modal').style.display = 'flex';
-        window.closeAdminModal = () => {
-            document.getElementById('admin-modal').style.display = 'none';
-            document.getElementById('adminLogin').style.display = 'block';
-            document.getElementById('adminPanel').style.display = 'none';
-            document.getElementById('adminCodeInput').value = "";
-        };
-
-        window.openShop = () => {
+        window.openShop = function() {
             if(!state.pseudo) { alert("Entre ton pseudo d'abord !"); return; }
             document.getElementById('shop-modal').style.display = 'flex';
             renderShop();
-        };
-        window.closeShop = () => document.getElementById('shop-modal').style.display = 'none';
+        }
+        window.closeShop = function() { document.getElementById('shop-modal').style.display = 'none'; }
 
         function renderShop() {
             const grid = document.getElementById('shopGrid');
@@ -766,7 +733,7 @@
         }
 
         initMenu();
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = 'black'; ctx.fillRect(0,0,canvas.width,canvas.height);
     </script>
 </body>
 </html>
