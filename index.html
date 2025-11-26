@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jeu Kevin - Arcade V42 FINAL</title>
+    <title>Jeu Kevin - Arcade V43 FINAL SHOP FIX</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; }
@@ -13,7 +13,12 @@
             display: flex; flex-direction: column; justify-content: center; align-items: center; user-select: none;
         }
 
-        /* --- ZONES DE JEU --- */
+        /* --- ZONES --- */
+        #main-layout { display: flex; gap: 20px; align-items: flex-start; height: 80vh; width: 95%; max-width: 1400px; justify-content: center; z-index: 5; }
+        #game-column { display: flex; flex-direction: column; gap: 15px; }
+        #data-zone { display: flex; gap: 15px; height: 100%; position: relative; }
+
+        /* --- CANVAS --- */
         #canvas-wrapper {
             position: relative; border: 2px solid #333; background: #000;
             width: 800px; height: 500px; border-radius: 12px;
@@ -22,7 +27,7 @@
         }
         canvas { display: block; width: 100%; height: 100%; }
 
-        /* BACKGROUNDS */
+        /* --- BACKGROUNDS --- */
         .bg-default { background: #000 !important; }
         .bg-black { background: #000 !important; }
         .bg-red { background: linear-gradient(135deg, #300, #000) !important; }
@@ -36,12 +41,7 @@
         .bg-beach { background: linear-gradient(to bottom, #2980b9, #6dd5fa, #ffffff) !important; }
         @keyframes rainbow { 0% {background-position: 0% 50%;} 50% {background-position: 100% 50%;} 100% {background-position: 0% 50%;} }
 
-        /* LAYOUT */
-        #main-layout { display: flex; gap: 20px; align-items: flex-start; height: 80vh; width: 95%; max-width: 1400px; justify-content: center; z-index: 5; }
-        #game-column { display: flex; flex-direction: column; gap: 15px; }
-        #data-zone { display: flex; gap: 15px; height: 100%; position: relative; }
-
-        /* UI TOP LEFT */
+        /* --- UI --- */
         #top-left-ui { position: absolute; top: 20px; left: 20px; z-index: 50; display: flex; gap: 15px; align-items: center; }
         #settings-btn { width: 40px; height: 40px; background: rgba(0,0,0,0.8); border: 2px solid #888; border-radius: 50%; cursor: pointer; display: flex; justify-content: center; align-items: center; font-size: 20px; transition: 0.2s; }
         #settings-btn:hover { border-color: #fff; transform: rotate(90deg); }
@@ -49,10 +49,9 @@
         #shop-btn-container:hover { transform: scale(1.05); box-shadow: 0 0 15px #ffd700; }
         .shop-icon { font-size: 20px; }
         .coin-balance { font-size: 16px; color: #ffd700; font-weight: bold; }
-        
         .info-pill { background: rgba(0,0,0,0.8); padding: 8px 15px; border-radius: 30px; border: 1px solid #fff; font-size: 12px; font-weight: bold; display: flex; align-items: center; gap: 10px; }
-        
-        /* LEVEL BAR */
+
+        /* LEVEL */
         #level-container { display: flex; flex-direction: column; width: 100px; justify-content: center; }
         #level-text { font-size: 10px; color: #00d4ff; margin-bottom: 2px; font-weight: bold; }
         #xp-bar-bg { width: 100%; height: 4px; background: #333; border-radius: 2px; overflow: hidden; }
@@ -64,7 +63,7 @@
             background: radial-gradient(circle at 30% 30%, #ffd700, #b8860b);
             border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 20px #ffd700;
             display: flex; justify-content: center; align-items: center; font-size: 30px;
-            cursor: pointer; z-index: 2147483647; /* MAXIMAL */
+            cursor: pointer; z-index: 2147483647; 
             transition: top 1s linear, left 1s linear;
         }
         #coin-bag:active { transform: scale(0.9); }
@@ -79,7 +78,7 @@
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 10px; }
         .btn-close { background: #ff4757; color: white; border: none; padding: 5px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
         
-        /* SHOP GRID */
+        /* SHOP */
         .shop-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; overflow-y: auto; padding-right: 10px; }
         .shop-item { background: #222; border: 1px solid #444; border-radius: 10px; padding: 10px; display: flex; flex-direction: column; align-items: center; gap: 5px; transition: 0.2s; }
         .shop-item:hover { border-color: #ffd700; }
@@ -91,7 +90,7 @@
 
         /* SIDEBARS */
         .sidebar-column { width: 260px; height: 635px; display: flex; flex-direction: column; gap: 15px; }
-        .sidebar-box { background: rgba(15, 15, 25, 0.9); border: 1px solid #00d4ff; border-radius: 12px; padding: 15px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        .sidebar-box { background: rgba(15, 15, 25, 0.9); border: 1px solid #00d4ff; border-radius: 12px; padding: 15px; display: flex; flex-direction: column; box-shadow: 0 0 20px rgba(0,0,0,0.5); overflow: hidden; }
         .box-top10 { flex: 3; } .box-recent { flex: 2; border-color: #ff4757; } .box-perso { flex: 3; border-color: #ff6b6b; } .box-active { flex: 2; border-color: #2ecc71; }
         h2 { text-align: center; margin-top: 0; font-size: 14px; border-bottom: 2px solid; padding-bottom: 8px; margin-bottom: 8px; text-transform: uppercase; }
         .title-blue { color: #00d4ff; border-color: #00d4ff33; } .title-red { color: #ff4757; border-color: #ff475733; }
@@ -178,7 +177,7 @@
 
                 <div id="start-screen" class="overlay">
                     <h1 style="color:#00d4ff; text-shadow:0 0 20px #00d4ff; margin-bottom: 5px;">JEU KEVIN</h1>
-                    <p style="color:#888; font-size: 12px; margin-bottom: 15px;">ULTIMATE V42</p>
+                    <p style="color:#888; font-size: 12px; margin-bottom: 15px;">ULTIMATE V43</p>
                     <p style="color:#ffd700; font-size: 16px; margin-bottom: 30px;">MEILLEUR SCORE : <span id="bestScoreDisplay">0</span></p>
                     <input type="text" id="playerNameInput" placeholder="PSEUDO" maxlength="12">
                     <button class="btn" id="play-btn">JOUER</button>
@@ -233,7 +232,7 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // DOM ELEMENTS
+        // --- DOM ---
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const nameInput = document.getElementById('playerNameInput');
@@ -241,30 +240,11 @@
         const bestScoreDisplay = document.getElementById('bestScoreDisplay');
         const levelText = document.getElementById('level-text');
         const xpBarFill = document.getElementById('xp-bar-fill');
-        
-        // --- LEVEL FACTORS ---
+
+        // --- EXCEL LEVELS ---
         const XP_FACTORS = [1, 0.99, 0.99, 0.98, 0.98, 0.97, 0.97, 0.96, 0.96, 0.95, 0.95, 0.94, 0.94, 0.93, 0.93, 0.92, 0.92, 0.91, 0.91, 0.9, 0.9, 0.89, 0.89, 0.88, 0.88, 0.87, 0.87, 0.86, 0.86, 0.85, 0.85, 0.84, 0.84, 0.83, 0.83, 0.82, 0.82, 0.81, 0.81, 0.8, 0.8, 0.79, 0.79, 0.78, 0.78, 0.77, 0.77, 0.76, 0.76, 0.75, 0.75, 0.74, 0.74, 0.73, 0.73, 0.72, 0.72, 0.71, 0.71, 0.7, 0.7, 0.69, 0.69, 0.68, 0.68, 0.64, 0.64, 0.6, 0.6, 0.56, 0.56, 0.52, 0.52, 0.48, 0.48, 0.44, 0.44, 0.4, 0.4, 0.36, 0.36, 0.32, 0.32, 0.3, 0.3, 0.25, 0.25, 0.25, 0.25, 0.2, 0.2, 0.2, 0.2, 0.2, 0.1, 0.1, 0.1, 0.05, 0.05, 0.05];
 
-        // INIT LISTENERS
-        document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('settings-btn').addEventListener('click', () => document.getElementById('admin-modal').style.display = 'flex');
-            document.getElementById('close-admin').addEventListener('click', () => document.getElementById('admin-modal').style.display = 'none');
-            document.getElementById('shop-btn-container').addEventListener('click', openShop);
-            document.getElementById('close-shop').addEventListener('click', () => document.getElementById('shop-modal').style.display = 'none');
-            document.getElementById('validate-admin').addEventListener('click', checkAdminCode);
-            document.getElementById('dlBtn').addEventListener('click', downloadDatabase);
-            
-            // BOUTONS JEU
-            document.getElementById('play-btn').addEventListener('click', startGame);
-            document.getElementById('menu-btn').addEventListener('click', returnToMenu);
-            
-            if(state.pseudo) { nameInput.value = state.pseudo; checkOnlineData(); }
-            refreshAllSkins();
-            initCoinBagLoop();
-            ctx.clearRect(0, 0, 800, 500);
-        });
-
-        // CONSTANTS
+        // --- DATA ---
         const BACKGROUNDS = [
             { id: 'bg-default', name: 'PAR DEFAUT', type: 'basic', css: '#000', price: 0 },
             { id: 'bg-black', name: 'NOIR', type: 'color', css: '#000', price: 1000 },
@@ -301,10 +281,26 @@
         let particles = [];
         let lastTime = 0;
         let lastSaveTime = 0;
-        let bagElement = null;
-        let bagTimerInterval;
 
-        // --- LEVEL SYSTEM ---
+        // --- INITIALISATION ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // LISTENERS (CORRECTIF)
+            document.getElementById('settings-btn').addEventListener('click', () => document.getElementById('admin-modal').style.display = 'flex');
+            document.getElementById('close-admin').addEventListener('click', () => document.getElementById('admin-modal').style.display = 'none');
+            document.getElementById('shop-btn-container').addEventListener('click', openShop);
+            document.getElementById('close-shop').addEventListener('click', () => document.getElementById('shop-modal').style.display = 'none');
+            document.getElementById('validate-admin').addEventListener('click', checkAdminCode);
+            document.getElementById('dlBtn').addEventListener('click', downloadDatabase);
+            document.getElementById('play-btn').addEventListener('click', startGame);
+            document.getElementById('menu-btn').addEventListener('click', returnToMenu);
+            
+            if(state.pseudo) { nameInput.value = state.pseudo; checkOnlineData(); }
+            refreshAllSkins();
+            initCoinBagLoop();
+            ctx.clearRect(0, 0, 800, 500);
+        });
+
+        // --- FUNCTIONS ---
         function calculateLevel(xp) { return Math.floor(xp / 100) + 1; }
         function updateLevelDisplay() {
             state.level = calculateLevel(state.totalXP);
@@ -314,8 +310,10 @@
         }
 
         // --- COIN BAG ---
-        const BAG_INTERVAL = 30000; 
+        const BAG_INTERVAL = 30000;
         let bagMainInterval;
+        let bagElement = null;
+        let bagTimerInterval;
 
         function initCoinBagLoop() {
             if(bagMainInterval) clearInterval(bagMainInterval);
@@ -338,12 +336,12 @@
             zone.appendChild(bagElement);
 
             bagElement.onclick = () => {
-                const reward = 5 + Math.floor(Math.random() * 26); 
+                const reward = 5 + Math.floor(Math.random() * 26); // 5-30
                 state.coins += reward; updateCoinDisplay();
                 if(state.pseudo) addFreeCoins(state.pseudo, reward);
                 
                 const fb = document.createElement('div'); fb.className = 'coin-popup';
-                const bagRect = bagElement.getBoundingClientRect(); 
+                const bagRect = bagElement.getBoundingClientRect();
                 fb.style.left = bagRect.left + 'px'; fb.style.top = bagRect.top + 'px';
                 fb.innerText = `+${reward} KC`; document.body.appendChild(fb);
                 setTimeout(() => fb.remove(), 1000);
@@ -365,11 +363,7 @@
             if(bagTimerInterval) clearInterval(bagTimerInterval);
             bagTimerInterval = setInterval(() => { time--; if(t) t.innerText = time + "s"; if(time <= 0) removeCoinBag(); }, 1000);
         }
-
-        function removeCoinBag() {
-            if(bagElement) { bagElement.remove(); bagElement = null; }
-            if(bagTimerInterval) clearInterval(bagTimerInterval);
-        }
+        function removeCoinBag() { if(bagElement) { bagElement.remove(); bagElement = null; } if(bagTimerInterval) clearInterval(bagTimerInterval); }
 
         // --- FIREBASE ---
         async function saveGameResults(name, points, earnedCoins) {
@@ -380,20 +374,22 @@
             try {
                 addDoc(collection(db, "history"), { name: cleanName, points: points, date: now });
                 const bestRef = doc(db, "best_scores", cleanName);
-                getDoc(bestRef).then(snap => {
-                    if (!snap.exists() || points > snap.data().points) setDoc(bestRef, { name: cleanName, points: points, date: now }, { merge: true });
-                });
+                getDoc(bestRef).then(snap => { if (!snap.exists() || points > snap.data().points) setDoc(bestRef, { name: cleanName, points: points, date: now }, { merge: true }); });
+                
                 const userRef = doc(db, "user_stats", cleanName);
                 const userSnap = await getDoc(userRef);
-                let myRecords = [], currentInventory = [], currentEquipped = 'bg-default', currentPlays = 0, currentCoins = 0, totalPoints = 0, currentXP = 0;
+                let myRecords = [], currentInventory = [], currentEquipped = 'bg-default', currentPlays = 0, currentCoins = 0, currentXP = 0;
                 if(userSnap.exists()) {
                     const data = userSnap.data();
-                    myRecords = data.personalRecords || []; currentInventory = data.inventory || []; currentEquipped = data.equippedBg || 'bg-default';
-                    currentPlays = data.gamesPlayed || 0; currentCoins = data.coins || 0; currentXP = data.xp || 0;
+                    myRecords = data.personalRecords || [];
+                    currentInventory = data.inventory || [];
+                    currentEquipped = data.equippedBg || 'bg-default';
+                    currentPlays = data.gamesPlayed || 0;
+                    currentCoins = data.coins || 0;
+                    currentXP = data.xp || 0;
                 }
                 myRecords.push(points); myRecords.sort((a, b) => b - a); myRecords = myRecords.slice(0, 10);
-                const newPlays = currentPlays + 1;
-                // XP Logic from Excel
+                
                 const currentLevel = calculateLevel(currentXP);
                 const factorIndex = Math.min(currentLevel - 1, XP_FACTORS.length - 1);
                 const factor = XP_FACTORS[factorIndex];
@@ -401,20 +397,17 @@
                 const newTotalXP = currentXP + xpGained;
 
                 await setDoc(userRef, { 
-                    name: cleanName, gamesPlayed: newPlays, coins: currentCoins + earnedCoins,
-                    personalRecords: myRecords, inventory: currentInventory, equippedBg: currentEquipped,
-                    xp: newTotalXP
+                    name: cleanName, gamesPlayed: increment(1), coins: currentCoins + earnedCoins,
+                    personalRecords: myRecords, inventory: currentInventory, equippedBg: currentEquipped, xp: newTotalXP
                 }, { merge: true });
-                
+
                 state.totalXP = newTotalXP; updateLevelDisplay();
                 setDoc(doc(db, "stats", "global"), { totalPoints: increment(points), totalGames: increment(1) }, { merge: true });
                 displayPersonalRecords(myRecords);
             } catch (e) {}
         }
 
-        async function addFreeCoins(name, amount) {
-            try { await setDoc(doc(db, "user_stats", name.trim().toUpperCase()), { coins: increment(amount) }, { merge: true }); } catch (e) {}
-        }
+        async function addFreeCoins(name, amount) { try { await setDoc(doc(db, "user_stats", name.trim().toUpperCase()), { coins: increment(amount) }, { merge: true }); } catch (e) {} }
 
         nameInput.addEventListener('blur', () => { state.pseudo = nameInput.value.trim().toUpperCase(); checkOnlineData(); });
 
@@ -437,7 +430,7 @@
                     if(d.personalRecords) displayPersonalRecords(d.personalRecords);
                     updateCoinDisplay();
                 } else {
-                     fetchPersonalRecordsFallback(name);
+                    fetchPersonalRecordsFallback(name);
                 }
             } catch(e) {}
         }
@@ -447,8 +440,7 @@
             const snap = await getDocs(q);
             let scores = [];
             snap.forEach(doc => scores.push(doc.data().points));
-            scores.sort((a,b) => b-a);
-            scores = scores.slice(0, 10);
+            scores.sort((a,b) => b-a); scores = scores.slice(0, 10);
             if(scores.length > 0) { displayPersonalRecords(scores); setDoc(doc(db, "user_stats", name), { personalRecords: scores }, { merge: true }); }
         }
 
@@ -461,6 +453,28 @@
         function updateCoinDisplay() { coinDisplay.innerText = state.coins; }
 
         // --- SHOP ---
+        async function buyItem(itemId, price) {
+            const cleanName = state.pseudo.trim().toUpperCase();
+            try {
+                const userRef = doc(db, "user_stats", cleanName);
+                const snap = await getDoc(userRef);
+                if(snap.exists()) {
+                    const d = snap.data();
+                    if((d.coins || 0) >= price && !d.inventory?.includes(itemId)) {
+                        let newInv = [...(d.inventory||[]), itemId];
+                        await setDoc(userRef, { coins: d.coins - price, inventory: newInv }, { merge: true });
+                        state.coins -= price; state.inventory.push(itemId);
+                        updateCoinDisplay(); renderShop();
+                    }
+                }
+            } catch(e) {}
+        }
+        async function equipItem(bgId) {
+            state.equippedBg = bgId; document.getElementById('canvas-wrapper').className = bgId;
+            await setDoc(doc(db, "user_stats", state.pseudo.trim().toUpperCase()), { equippedBg: bgId }, { merge: true });
+            renderShop();
+        }
+
         function openShop() { if(!state.pseudo) { alert("Pseudo requis"); return; } document.getElementById('shop-modal').style.display = 'flex'; renderShop(); }
         function renderShop() {
             const grid = document.getElementById('shopGrid'); grid.innerHTML = "";
@@ -475,115 +489,12 @@
                 else if(isOwned) { btn.className += ' btn-equip'; btn.innerText = "EQUIPER"; btn.onclick = () => equipItem(item.id); }
                 else {
                     btn.className += ' btn-buy'; btn.innerText = "ACHETER";
-                    if(state.coins < item.price) btn.style.opacity = 0.5;
-                    else btn.onclick = () => buyItem(item.id, item.price);
+                    if(state.coins < item.price) btn.style.opacity = 0.5; else btn.onclick = () => buyItem(item.id, item.price);
                 }
-                div.innerHTML += `<div class="item-name">${item.name}</div><div class="item-price">${item.price} KC</div>`;
-                div.prepend(preview); div.appendChild(btn); grid.appendChild(div);
+                div.innerHTML += `<div class="item-name">${item.name}</div><div class="item-price">${item.price} KC</div>`; div.prepend(preview); div.appendChild(btn); grid.appendChild(div);
             });
         }
 
-        async function buyItem(itemId, price) {
-            const cleanName = state.pseudo.trim().toUpperCase();
-            try {
-                await setDoc(doc(db, "user_stats", cleanName), { coins: increment(-price), inventory: arrayUnion(itemId) }, { merge: true }); 
-                // fallback update
-                const snap = await getDoc(doc(db, "user_stats", cleanName));
-                let inv = snap.data().inventory || []; if(!inv.includes(itemId)) inv.push(itemId);
-                await setDoc(doc(db, "user_stats", cleanName), { coins: snap.data().coins, inventory: inv }, { merge: true });
-                state.coins -= price; state.inventory.push(itemId); updateCoinDisplay(); renderShop();
-            } catch(e) {}
-        }
-
-        async function equipItem(bgId) {
-            state.equippedBg = bgId; document.getElementById('canvas-wrapper').className = bgId;
-            await setDoc(doc(db, "user_stats", state.pseudo.trim().toUpperCase()), { equippedBg: bgId }, { merge: true }); renderShop();
-        }
-
-        // --- GAME LOOP ---
-        window.addEventListener('mousemove', (e) => {
-            if(!state.running) return;
-            const rect = canvas.getBoundingClientRect();
-            const scaleX = canvas.width / rect.width;
-            let relativeX = (e.clientX - rect.left) * scaleX;
-            paddle.x = relativeX - (paddle.width / 2);
-            if(paddle.x < 0) paddle.x = 0; if(paddle.x > canvas.width - paddle.width) paddle.x = canvas.width - paddle.width;
-        });
-        window.addEventListener('keydown', (e) => { if(e.code === 'Space') state.spacePressed = true; });
-        window.addEventListener('keyup', (e) => { if(e.code === 'Space') state.spacePressed = false; });
-
-        function startGame() {
-            const name = nameInput.value.trim().toUpperCase();
-            if(!name) { alert("Pseudo requis"); return; }
-            state.pseudo = name; localStorage.setItem('kevin_pseudo', name);
-            checkOnlineData();
-            document.getElementById('start-screen').style.display = 'none';
-            document.getElementById('game-over-screen').style.display = 'none';
-            resetGame(); state.running = true; lastTime = performance.now();
-            requestAnimationFrame(gameLoop);
-        }
-        function resetGame() {
-            state.score = 0; document.getElementById('liveScore').innerText = '0';
-            ball.x = 400; ball.y = 200; ball.speed = 400;
-            let angle = Math.random() * Math.PI/2 + Math.PI/4;
-            ball.dx = Math.cos(angle); ball.dy = Math.sin(angle);
-            if(ball.dy < 0) ball.dy = -ball.dy;
-            particles = [];
-        }
-        function gameLoop(timestamp) {
-            if(!state.running) return;
-            const dt = (timestamp - lastTime) / 1000; lastTime = timestamp;
-            if(dt < 0.1) update(dt); draw(); requestAnimationFrame(gameLoop);
-        }
-        function update(dt) {
-            state.hue = (state.hue + 2) % 360;
-            for(let i=particles.length-1; i>=0; i--) { particles[i].life -= 2 * dt; if(particles[i].life <= 0) particles.splice(i,1); }
-            ball.x += ball.dx * ball.speed * dt; ball.y += ball.dy * ball.speed * dt;
-            if(ball.x < 8) { ball.x=8; ball.dx*=-1; } if(ball.x > 792) { ball.x=792; ball.dx*=-1; }
-            if(ball.y < 8) { ball.y=8; ball.dy*=-1; }
-            if(ball.y + 8 >= paddle.y && ball.y - 8 <= paddle.y + 15 && ball.dy > 0) {
-                if(ball.x >= paddle.x && ball.x <= paddle.x + 120) {
-                    let hit = (ball.x - (paddle.x + 60)) / 60;
-                    let angle = hit * (Math.PI/3);
-                    ball.speed = Math.min(ball.speed + 30, 1000);
-                    ball.dx = Math.sin(angle); ball.dy = -Math.cos(angle);
-                    ball.y = paddle.y - 9;
-                    state.score++; document.getElementById('liveScore').innerText = state.score;
-                    for(let i=0; i<10; i++) particles.push({ x: ball.x, y: paddle.y, color: getDynamicColor(state.selectedBallColor), sx: (Math.random()-0.5)*8, sy: (Math.random()-0.5)*8, size: Math.random()*3+1, life: 1 });
-                }
-            }
-            if(ball.y > 500) endGame();
-        }
-        function draw() {
-            ctx.clearRect(0, 0, 800, 500);
-            const ballC = getDynamicColor(state.selectedBallColor);
-            const padC = getDynamicColor(state.selectedPaddleColor);
-            particles.forEach(p => { ctx.globalAlpha = p.life; ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI*2); ctx.fill(); });
-            ctx.globalAlpha = 1;
-            ctx.fillStyle = padC; ctx.shadowBlur = state.spacePressed ? 30 : 10; ctx.shadowColor = padC;
-            if(state.selectedPaddleColor === '#111') { ctx.strokeStyle='white'; ctx.lineWidth=2; ctx.strokeRect(paddle.x, paddle.y, 120, 15); }
-            ctx.fillRect(paddle.x, paddle.y, 120, 15);
-            ctx.fillStyle = ballC; ctx.shadowColor = ballC; ctx.shadowBlur = 15;
-            ctx.beginPath(); ctx.arc(ball.x, ball.y, 8, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur = 0;
-        }
-        function getDynamicColor(c) { return c === 'rainbow' ? `hsl(${state.hue}, 100%, 50%)` : c; }
-        function endGame() {
-            state.running = false;
-            const earnedCoins = state.score; state.coins += earnedCoins;
-            document.getElementById('coinsEarned').innerText = earnedCoins;
-            document.getElementById('finalScore').innerText = state.score;
-            updateCoinDisplay();
-            if(state.score > state.bestScore) { state.bestScore = state.score; bestScoreDisplay.innerText = state.score; }
-            saveGameResults(state.pseudo, state.score, earnedCoins);
-            document.getElementById('game-over-screen').style.display = 'flex';
-        }
-        function returnToMenu() {
-            document.getElementById('game-over-screen').style.display = 'none';
-            document.getElementById('start-screen').style.display = 'flex';
-            initMenu(); ctx.clearRect(0, 0, 800, 500);
-        }
-
-        // HELPERS
         function refreshAllSkins() {
             renderSkinRow(BALL_SKINS, 'ballSkinsContainer', state.selectedBallColor, (c) => { state.selectedBallColor = c; localStorage.setItem('kevin_color', c); });
             renderSkinRow(PADDLE_SKINS, 'paddleSkinsContainer', state.selectedPaddleColor, (c) => { state.selectedPaddleColor = c; localStorage.setItem('kevin_paddle_color', c); });
@@ -602,18 +513,121 @@
                 wrapper.appendChild(btn); wrapper.appendChild(txt); container.appendChild(wrapper);
             });
         }
-        function checkAdminCode() { if(document.getElementById('adminCodeInput').value === "KC2523COUEDRO") { document.getElementById('adminLogin').style.display = 'none'; document.getElementById('adminPanel').style.display = 'flex'; } else { document.getElementById('adminError').style.display = 'block'; } }
-        async function downloadDatabase() { const btn = document.getElementById('dlBtn'); btn.innerText = "DL..."; const best = await getDocs(collection(db, "best_scores")); let d = []; best.forEach(doc => d.push(doc.data())); const url = URL.createObjectURL(new Blob([JSON.stringify(d)], { type: "application/json" })); const a = document.createElement('a'); a.href = url; a.download = "backup.json"; document.body.appendChild(a); a.click(); a.remove(); btn.innerText = "OK"; }
-        function initMenu() { if(state.pseudo) { nameInput.value = state.pseudo; checkOnlineData(); } refreshAllSkins(); initCoinBagLoop(); }
 
-        // LISTENERS LIVE
+        // --- GAME ENGINE ---
+        window.addEventListener('mousemove', (e) => {
+            if(!state.running) return;
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            let relativeX = (e.clientX - rect.left) * scaleX;
+            paddle.x = relativeX - (paddle.width / 2);
+            if(paddle.x < 0) paddle.x = 0; if(paddle.x > canvas.width - paddle.width) paddle.x = canvas.width - paddle.width;
+        });
+        window.addEventListener('keydown', (e) => { if(e.code === 'Space') state.spacePressed = true; });
+        window.addEventListener('keyup', (e) => { if(e.code === 'Space') state.spacePressed = false; });
+
+        async function startGame() {
+            const name = nameInput.value.trim().toUpperCase();
+            if(!name) { alert("Pseudo requis"); return; }
+            state.pseudo = name; localStorage.setItem('kevin_pseudo', name);
+            await checkOnlineData(); // Attendre le chargement
+            document.getElementById('start-screen').style.display = 'none';
+            document.getElementById('game-over-screen').style.display = 'none';
+            resetGame(); state.running = true; lastTime = performance.now();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function resetGame() {
+            state.score = 0; document.getElementById('liveScore').innerText = '0';
+            ball.x = 400; ball.y = 200; ball.speed = 400;
+            let angle = Math.random() * Math.PI/2 + Math.PI/4;
+            ball.dx = Math.cos(angle); ball.dy = Math.sin(angle);
+            if(ball.dy < 0) ball.dy = -ball.dy;
+            particles = [];
+        }
+
+        function gameLoop(timestamp) {
+            if(!state.running) return;
+            const dt = (timestamp - lastTime) / 1000; lastTime = timestamp;
+            if(dt < 0.1) update(dt); draw(); requestAnimationFrame(gameLoop);
+        }
+
+        function update(dt) {
+            state.hue = (state.hue + 2) % 360;
+            for(let i=particles.length-1; i>=0; i--) { particles[i].life -= 2 * dt; if(particles[i].life <= 0) particles.splice(i,1); }
+            ball.x += ball.dx * ball.speed * dt; ball.y += ball.dy * ball.speed * dt;
+            if(ball.x < 8) { ball.x=8; ball.dx*=-1; } if(ball.x > 792) { ball.x=792; ball.dx*=-1; }
+            if(ball.y < 8) { ball.y=8; ball.dy*=-1; }
+            if(ball.y + 8 >= paddle.y && ball.y - 8 <= paddle.y + 15 && ball.dy > 0) {
+                if(ball.x >= paddle.x && ball.x <= paddle.x + 120) {
+                    let hit = (ball.x - (paddle.x + 60)) / 60;
+                    let angle = hit * (Math.PI/3);
+                    ball.speed = Math.min(ball.speed + 30, 1000); 
+                    ball.dx = Math.sin(angle); ball.dy = -Math.cos(angle);
+                    ball.y = paddle.y - 9;
+                    state.score++; document.getElementById('liveScore').innerText = state.score;
+                    for(let i=0; i<10; i++) particles.push({ x: ball.x, y: paddle.y, color: getDynamicColor(state.selectedBallColor), sx: (Math.random()-0.5)*8, sy: (Math.random()-0.5)*8, size: Math.random()*3+1, life: 1 });
+                }
+            }
+            if(ball.y > 500) endGame();
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, 800, 500);
+            const ballC = getDynamicColor(state.selectedBallColor);
+            const padC = getDynamicColor(state.selectedPaddleColor);
+            particles.forEach(p => { ctx.globalAlpha = p.life; ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI*2); ctx.fill(); });
+            ctx.globalAlpha = 1;
+            ctx.fillStyle = padC; ctx.shadowBlur = state.spacePressed ? 30 : 10; ctx.shadowColor = padC;
+            if(state.selectedPaddleColor === '#111') { ctx.strokeStyle='white'; ctx.lineWidth=2; ctx.strokeRect(paddle.x, paddle.y, 120, 15); }
+            ctx.fillRect(paddle.x, paddle.y, 120, 15);
+            ctx.fillStyle = ballC; ctx.shadowColor = ballC; ctx.shadowBlur = 15;
+            ctx.beginPath(); ctx.arc(ball.x, ball.y, 8, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur = 0;
+        }
+        function getDynamicColor(c) { return c === 'rainbow' ? `hsl(${state.hue}, 100%, 50%)` : c; }
+
+        function endGame() {
+            state.running = false;
+            const earnedCoins = state.score; state.coins += earnedCoins;
+            document.getElementById('coinsEarned').innerText = earnedCoins;
+            document.getElementById('finalScore').innerText = state.score;
+            updateCoinDisplay();
+            if(state.score > state.bestScore) { state.bestScore = state.score; bestScoreDisplay.innerText = state.score; }
+            saveGameResults(state.pseudo, state.score, earnedCoins);
+            document.getElementById('game-over-screen').style.display = 'flex';
+        }
+
+        function returnToMenu() {
+            document.getElementById('game-over-screen').style.display = 'none';
+            document.getElementById('start-screen').style.display = 'flex';
+            initMenu(); ctx.clearRect(0, 0, 800, 500);
+        }
+
+        // --- MISC ---
+        function checkAdminCode() { if(document.getElementById('adminCodeInput').value === "KC2523COUEDRO") { document.getElementById('adminLogin').style.display = 'none'; document.getElementById('adminPanel').style.display = 'flex'; } else { document.getElementById('adminError').style.display = 'block'; } }
+        async function downloadDatabase() {
+             const btn = document.getElementById('dlBtn'); btn.innerText = "DL...";
+             try {
+                 const bestScoresSnap = await getDocs(collection(db, "best_scores"));
+                 const userStatsSnap = await getDocs(collection(db, "user_stats"));
+                 let data = { exportDate: new Date().toISOString(), best_scores: [], user_stats: [] };
+                 bestScoresSnap.forEach(doc => data.best_scores.push(doc.data()));
+                 userStatsSnap.forEach(doc => data.user_stats.push(doc.data()));
+                 const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+                 const a = document.createElement('a'); a.href = url; a.download = `kevin_arcade_backup.json`;
+                 document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                 btn.innerText = "SUCCÈS";
+             } catch(e) { console.error(e); }
+        }
+
+        // --- LISTENERS ---
         onSnapshot(query(collection(db, "best_scores"), orderBy("points", "desc")), snap => {
             const l = document.getElementById('score-list'); if(l) l.innerHTML = "";
             let r = 1;
             snap.forEach(d => { 
                 let medal = r===1 ? '👑 ' : '';
                 let color = r===1 ? '#ffd700' : (r===2 ? '#c0c0c0' : (r===3 ? '#cd7f32' : 'white'));
-                l.innerHTML += `<li><div style="display:flex; gap:10px; align-items:center"><span style="opacity:0.5; width:25px;">#${r}</span><span style="color:${color}; font-weight:bold;">${medal}${d.data().name}</span></div><span style="color:#00d4ff">${d.data().points}</span></li>`;
+                l.innerHTML += `<li><div style="display:flex; gap:5px; align-items:center"><span style="opacity:0.5; width:25px;">#${r}</span><span style="color:${color}; font-weight:bold;">${medal}${d.data().name}</span></div><span style="color:#00d4ff">${d.data().points}</span></li>`;
                 r++; 
             });
         });
@@ -624,7 +638,7 @@
         onSnapshot(query(collection(db, "user_stats"), orderBy("gamesPlayed", "desc"), limit(10)), snap => {
             const l = document.getElementById('active-list'); if(l) l.innerHTML = "";
             let r = 1;
-            snap.forEach(d => l.innerHTML += `<li style="border-color:#2ecc7133"><div style="display:flex; gap:10px;"><span style="opacity:0.5; width:20px;">#${r}</span><span>${d.data().name}</span></div><span style="color:#2ecc71">${d.data().gamesPlayed||0}</span></li>`); r++;
+            snap.forEach(d => l.innerHTML += `<li style="border-color:#2ecc7133"><div style="display:flex; gap:5px;"><span style="opacity:0.5; width:25px;">#${r}</span><span>${d.data().name}</span></div><span style="color:#2ecc71">${d.data().gamesPlayed||0}</span></li>`); r++;
         });
         onSnapshot(doc(db, "stats", "global"), snap => {
             if(snap.exists()) document.getElementById('avgScore').innerText = Math.round(snap.data().totalPoints/snap.data().totalGames) || 0;
