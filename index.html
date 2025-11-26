@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jeu Kevin - Arcade V28 Final</title>
+    <title>Jeu Kevin - Arcade V29 Final</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
     <style>
+        /* --- CSS GLOBAL --- */
         * { box-sizing: border-box; }
         body {
             margin: 0; padding: 0; background-color: #050510; 
@@ -14,108 +15,50 @@
             transition: background 0.5s ease;
         }
 
-        /* --- ZONES DE JEU --- */
-        #canvas-wrapper {
-            position: relative; border: 2px solid #333; background: #000;
-            width: 800px; height: 500px; border-radius: 12px;
-            box-shadow: 0 0 50px rgba(0, 212, 255, 0.1);
-            overflow: hidden; transition: background 0.3s;
-        }
-        /* Backgrounds */
-        #canvas-wrapper.bg-default { background: #000; }
-        #canvas-wrapper.bg-black { background: #000; }
-        #canvas-wrapper.bg-red { background: linear-gradient(135deg, #300, #000); }
-        #canvas-wrapper.bg-blue { background: linear-gradient(135deg, #003, #000); }
-        #canvas-wrapper.bg-green { background: linear-gradient(135deg, #030, #000); }
-        #canvas-wrapper.bg-rsb { background-color: #ffffff; background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Ctext x='50' y='50' font-family='Arial' font-weight='bold' font-size='24' fill='%23000080' opacity='0.15' text-anchor='middle' dominant-baseline='central' transform='rotate(-30 50 50)'%3ERSB%3C/text%3E%3C/svg%3E"); }
-        #canvas-wrapper.bg-space { background: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%); }
-        #canvas-wrapper.bg-rainbow { background: linear-gradient(45deg, #ff0000, #ff7300, #fffb00, #48ff00, #00ffd5, #002bff, #7a00ff, #ff00c8, #ff0000); background-size: 400%; animation: rainbow 20s linear infinite; }
-        #canvas-wrapper.bg-forest { background: linear-gradient(to bottom, #134e5e, #71b280); }
-        #canvas-wrapper.bg-mountain { background: linear-gradient(to bottom, #304352, #d7d2cc); }
-        #canvas-wrapper.bg-beach { background: linear-gradient(to bottom, #2980b9, #6dd5fa, #ffffff); }
+        /* BG Styles */
+        .bg-default { background: radial-gradient(circle at 50% 50%, #1a1a2e 0%, #000 100%); }
+        .bg-black { background: #000; }
+        .bg-red { background: linear-gradient(135deg, #300, #000); }
+        .bg-blue { background: linear-gradient(135deg, #003, #000); }
+        .bg-green { background: linear-gradient(135deg, #030, #000); }
+        .bg-rsb { background-color: #ffffff; background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Ctext x='50' y='50' font-family='Arial' font-weight='bold' font-size='24' fill='%23000080' opacity='0.15' text-anchor='middle' dominant-baseline='central' transform='rotate(-30 50 50)'%3ERSB%3C/text%3E%3C/svg%3E"); }
+        .bg-space { background: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%); }
+        .bg-rainbow { background: linear-gradient(45deg, #ff0000, #ff7300, #fffb00, #48ff00, #00ffd5, #002bff, #7a00ff, #ff00c8, #ff0000); background-size: 400%; animation: rainbow 20s linear infinite; }
+        .bg-forest { background: linear-gradient(to bottom, #134e5e, #71b280); }
+        .bg-mountain { background: linear-gradient(to bottom, #304352, #d7d2cc); }
+        .bg-beach { background: linear-gradient(to bottom, #2980b9, #6dd5fa, #ffffff); }
         @keyframes rainbow { 0% {background-position: 0% 50%;} 50% {background-position: 100% 50%;} 100% {background-position: 0% 50%;} }
 
-        canvas { display: block; border-radius: 12px; width: 100%; height: 100%; }
-        #main-layout { display: flex; gap: 20px; align-items: flex-start; height: 80vh; width: 95%; max-width: 1400px; justify-content: center; z-index: 5; }
-        #game-column { display: flex; flex-direction: column; gap: 15px; }
-
-        /* --- UI TOP LEFT --- */
+        /* UI Elements */
         #top-left-ui { position: absolute; top: 20px; left: 20px; z-index: 50; display: flex; gap: 15px; align-items: center; }
-        
-        #settings-btn {
-            width: 40px; height: 40px; background: rgba(0,0,0,0.8);
-            border: 2px solid #888; border-radius: 50%; cursor: pointer;
-            display: flex; justify-content: center; align-items: center; font-size: 20px; transition: 0.2s;
-        }
+        #settings-btn { width: 40px; height: 40px; background: rgba(0,0,0,0.8); border: 2px solid #888; border-radius: 50%; cursor: pointer; display: flex; justify-content: center; align-items: center; font-size: 20px; transition: 0.2s; }
         #settings-btn:hover { border-color: #fff; transform: rotate(90deg); }
-
-        #shop-btn-container {
-            display: flex; align-items: center; gap: 8px;
-            background: rgba(0,0,0,0.8); padding: 8px 15px; border-radius: 30px;
-            border: 2px solid #ffd700; cursor: pointer; transition: 0.2s;
-        }
+        #shop-btn-container { display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.8); padding: 8px 15px; border-radius: 30px; border: 2px solid #ffd700; cursor: pointer; transition: 0.2s; }
         #shop-btn-container:hover { transform: scale(1.05); box-shadow: 0 0 15px #ffd700; }
         .shop-icon { font-size: 20px; }
         .coin-balance { font-size: 16px; color: #ffd700; font-weight: bold; }
+        #avg-score-container { background: rgba(0,0,0,0.8); padding: 8px 15px; border-radius: 30px; border: 1px solid #fff; color: white; font-size: 12px; font-weight: bold; }
 
-        #avg-score-container {
-            background: rgba(0,0,0,0.8); padding: 8px 15px; border-radius: 30px;
-            border: 1px solid #fff; color: white; font-size: 12px; font-weight: bold;
-        }
+        /* Layout */
+        #main-layout { display: flex; gap: 20px; align-items: flex-start; height: 80vh; width: 95%; max-width: 1400px; justify-content: center; z-index: 5; }
+        #game-column { display: flex; flex-direction: column; gap: 15px; }
+        #canvas-wrapper { position: relative; border: 2px solid #333; background: #000; width: 800px; height: 500px; border-radius: 12px; box-shadow: 0 0 50px rgba(0, 212, 255, 0.1); overflow: hidden; transition: background 0.3s; }
+        canvas { display: block; border-radius: 12px; width: 100%; height: 100%; }
 
-        /* --- COIN BAG --- */
-        #coin-bag {
-            position: absolute; width: 60px; height: 60px; background: radial-gradient(circle at 30% 30%, #ffd700, #b8860b);
-            border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 20px #ffd700;
-            display: flex; justify-content: center; align-items: center; font-size: 30px;
-            cursor: pointer; z-index: 99999; transition: transform 0.1s; animation: pulseBag 1s infinite alternate;
-        }
-        #coin-bag:active { transform: scale(0.9); }
-        @keyframes pulseBag { from { box-shadow: 0 0 10px #ffd700; } to { box-shadow: 0 0 30px #ffd700; } }
-        .bag-timer {
-            position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%);
-            background: #000; color: #fff; font-size: 10px; padding: 2px 5px; border-radius: 5px;
-        }
-        .coin-popup {
-            position: absolute; color: #ffd700; font-weight: bold; font-size: 24px;
-            text-shadow: 0 0 10px #000; pointer-events: none; animation: floatUp 1s forwards; z-index: 100000;
-        }
-        @keyframes floatUp { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-50px); opacity: 0; } }
-
-        /* --- MODALS --- */
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 100; display: none; flex-direction: column; align-items: center; justify-content: center; }
-        .modal-content { width: 800px; height: 600px; background: #15151f; border: 2px solid #ffd700; border-radius: 15px; padding: 20px; display: flex; flex-direction: column; }
-        .admin-content { width: 400px; height: auto; border-color: #888; padding: 30px; text-align: center; }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 10px; }
-        .btn-close { background: #ff4757; color: white; border: none; padding: 5px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
-
-        .shop-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; overflow-y: auto; padding-right: 10px; }
-        .shop-item { background: #222; border: 1px solid #444; border-radius: 10px; padding: 10px; display: flex; flex-direction: column; align-items: center; gap: 5px; transition: 0.2s; }
-        .shop-item:hover { border-color: #ffd700; }
-        .item-preview { width: 100%; height: 60px; border-radius: 5px; margin-bottom: 5px; }
-        .item-name { font-size: 12px; font-weight: bold; color: #fff; }
-        .item-price { color: #ffd700; font-size: 12px; }
-        .shop-action-btn { width: 100%; padding: 5px; margin-top: 5px; border: none; border-radius: 5px; font-family: 'Orbitron'; font-size: 10px; cursor: pointer; font-weight: bold; }
-        .btn-buy { background: #ffd700; color: #000; }
-        .btn-equip { background: #00d4ff; color: #000; }
-        .btn-equipped { background: #2ecc71; color: #fff; cursor: default; }
-
-        /* --- SIDEBARS --- */
+        /* Sidebars */
         .sidebar-column { width: 260px; height: 635px; display: flex; flex-direction: column; gap: 15px; }
         .sidebar-box { background: rgba(15, 15, 25, 0.9); border: 1px solid #00d4ff; border-radius: 12px; padding: 15px; display: flex; flex-direction: column; box-shadow: 0 0 20px rgba(0,0,0,0.5); overflow: hidden; }
         .box-top10 { flex: 3; } .box-recent { flex: 2; border-color: #ff4757; } .box-perso { flex: 3; border-color: #ff6b6b; } .box-active { flex: 2; border-color: #2ecc71; }
-        
         h2 { text-align: center; margin-top: 0; font-size: 14px; text-transform: uppercase; border-bottom: 2px solid; padding-bottom: 8px; margin-bottom: 8px; }
         .title-blue { color: #00d4ff; border-color: #00d4ff33; }
         .title-red { color: #ff4757; border-color: #ff475733; }
         .title-pink { color: #ff6b6b; border-color: #ff6b6b33; }
         .title-green { color: #2ecc71; border-color: #2ecc7133; }
-
         ul { list-style: none; padding: 0; overflow-y: auto; flex-grow: 1; }
         li { padding: 6px 8px; border-bottom: 1px solid #ffffff10; display: flex; justify-content: space-between; font-size: 12px; align-items: center; }
         ul::-webkit-scrollbar { width: 4px; } ul::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
 
-        /* --- SKINS PANEL --- */
+        /* Skins */
         #skins-panel { width: 800px; padding: 10px 20px; background: rgba(15, 15, 25, 0.8); border: 1px solid #333; border-radius: 12px; display: flex; flex-direction: column; gap: 10px; }
         .skins-row { display: flex; align-items: center; gap: 15px; }
         .skins-label { width: 60px; font-size: 12px; color: #888; text-align: right; margin-right: 10px; font-weight: bold; }
@@ -127,16 +70,40 @@
         .skin-btn.selected { border-color: white; transform: scale(1.2); box-shadow: 0 0 10px white; }
         .skin-req { font-size: 9px; color: #666; margin-top: 4px; font-family: monospace; }
 
-        /* --- FOOTER --- */
+        /* Modals */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 100; display: none; flex-direction: column; align-items: center; justify-content: center; }
+        .modal-content { width: 800px; height: 600px; background: #15151f; border: 2px solid #ffd700; border-radius: 15px; padding: 20px; display: flex; flex-direction: column; }
+        .admin-content { width: 400px; height: auto; border-color: #888; padding: 30px; text-align: center; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        .btn-close { background: #ff4757; color: white; border: none; padding: 5px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .shop-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; overflow-y: auto; padding-right: 10px; }
+        .shop-item { background: #222; border: 1px solid #444; border-radius: 10px; padding: 10px; display: flex; flex-direction: column; align-items: center; gap: 5px; transition: 0.2s; }
+        .shop-item:hover { border-color: #ffd700; }
+        .item-preview { width: 100%; height: 60px; border-radius: 5px; margin-bottom: 5px; }
+        .item-name { font-size: 12px; font-weight: bold; color: #fff; }
+        .item-price { color: #ffd700; font-size: 12px; }
+        .shop-action-btn { width: 100%; padding: 5px; margin-top: 5px; border: none; border-radius: 5px; font-family: 'Orbitron'; font-size: 10px; cursor: pointer; font-weight: bold; }
+        .btn-buy { background: #ffd700; color: #000; }
+        .btn-equip { background: #00d4ff; color: #000; }
+        .btn-equipped { background: #2ecc71; color: #fff; cursor: default; }
+
+        /* Footer */
         .footer-scroll { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(0,0,0,0.9); border-top: 1px solid #333; height: 30px; overflow: hidden; white-space: nowrap; display: flex; align-items: center; z-index: 100; }
         .scrolling-text { animation: scroll 20s linear infinite; color: #00d4ff; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; padding-left: 100%; }
         @keyframes scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
 
+        /* Overlays & HUD */
         .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 20; display: flex; flex-direction: column; justify-content: center; align-items: center; border-radius: 12px; }
         input { padding: 15px; font-size: 20px; background: #0f0f1e; border: 2px solid #00d4ff; color: white; text-align: center; border-radius: 8px; outline: none; margin-bottom: 20px; text-transform: uppercase; }
         .btn { padding: 15px 50px; font-size: 22px; background: linear-gradient(90deg, #00d4ff, #005bea); border: none; color: white; font-weight: bold; cursor: pointer; border-radius: 50px; }
         #liveScore { position: absolute; top: 20px; left: 20px; font-size: 32px; font-weight: bold; color: #ffffff40; pointer-events: none; }
-        
+        #coin-bag { position: absolute; width: 60px; height: 60px; background: radial-gradient(circle at 30% 30%, #ffd700, #b8860b); border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 20px #ffd700; display: flex; justify-content: center; align-items: center; font-size: 30px; cursor: pointer; z-index: 99999; transition: transform 0.1s; animation: pulseBag 1s infinite alternate; }
+        @keyframes pulseBag { from { box-shadow: 0 0 10px #ffd700; } to { box-shadow: 0 0 30px #ffd700; } }
+        .bag-timer { position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%); background: #000; color: #fff; font-size: 10px; padding: 2px 5px; border-radius: 5px; }
+        .coin-popup { position: absolute; color: #ffd700; font-weight: bold; font-size: 24px; text-shadow: 0 0 10px #000; pointer-events: none; animation: floatUp 1s forwards; z-index: 100000; }
+        @keyframes floatUp { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-50px); opacity: 0; } }
+
+        /* Responsive */
         @media (max-width: 1400px) {
             #main-layout { flex-wrap: wrap; height: auto; margin-bottom: 60px; }
             .sidebar-column { width: 45%; height: 400px; order: 2; }
@@ -145,7 +112,7 @@
         }
     </style>
 </head>
-<body class="bg-default">
+<body>
 
     <div id="top-left-ui">
         <div id="settings-btn" onclick="openAdminModal()">⚙️</div>
@@ -154,15 +121,12 @@
             <span class="coin-balance" id="coinDisplay">0</span>
             <span style="font-size:10px; color:#aaa; margin-left:3px;">KEV COINS</span>
         </div>
-        <div id="avg-score-container">Moyenne des scores = <span id="avgScore">--</span></div>
+        <div id="avg-score-container">Moyenne : <span id="avgScore">--</span></div>
     </div>
 
     <div id="admin-modal" class="modal-overlay">
         <div class="modal-content admin-content">
-            <div class="shop-header">
-                <h2 style="color:#888; border:none;">ADMINISTRATION</h2>
-                <button class="btn-close" onclick="closeAdminModal()">X</button>
-            </div>
+            <div class="shop-header"><h2 style="color:#888; border:none;">ADMINISTRATION</h2><button class="btn-close" onclick="closeAdminModal()">X</button></div>
             <div id="adminLogin">
                 <p style="color:#aaa; margin-bottom:20px;">Entrez le code sécurisé</p>
                 <input type="password" id="adminCodeInput" placeholder="CODE" style="width:100%;">
@@ -178,74 +142,49 @@
 
     <div id="shop-modal" class="modal-overlay">
         <div class="shop-content">
-            <div class="shop-header">
-                <h2 style="color:#ffd700; font-size:24px; border:none;">BOUTIQUE DE FONDS</h2>
-                <button class="btn-close" onclick="closeShop()">X</button>
-            </div>
+            <div class="shop-header"><h2 style="color:#ffd700; font-size:24px; border:none;">BOUTIQUE</h2><button class="btn-close" onclick="closeShop()">X</button></div>
             <div class="shop-grid" id="shopGrid"></div>
         </div>
     </div>
 
     <div id="main-layout">
         <div id="game-column">
-            <div id="canvas-wrapper">
+            <div id="canvas-wrapper" class="bg-default">
                 <div id="start-screen" class="overlay">
                     <h1 style="color:#00d4ff; text-shadow:0 0 20px #00d4ff; margin-bottom: 5px;">JEU KEVIN</h1>
-                    <p style="color:#888; font-size: 12px; margin-bottom: 15px;">ULTIMATE V28</p>
+                    <p style="color:#888; font-size: 12px; margin-bottom: 15px;">ULTIMATE V29 FINAL</p>
                     <p style="color:#ffd700; font-size: 16px; margin-bottom: 30px;">MEILLEUR SCORE : <span id="bestScoreDisplay">0</span></p>
                     <input type="text" id="playerNameInput" placeholder="PSEUDO" maxlength="12">
                     <button class="btn" onclick="startGame()">JOUER</button>
                 </div>
-
                 <div id="game-over-screen" class="overlay" style="display:none;">
                     <h2 style="color:#ff6b6b; font-size:48px;">PERDU</h2>
                     <p style="font-size:24px; margin-bottom:10px;">Score : <span id="finalScore" style="color:#00d4ff">0</span></p>
                     <p style="font-size:16px; margin-bottom:30px; color:#ffd700;">+<span id="coinsEarned">0</span> Kev Coins</p>
                     <button class="btn" onclick="returnToMenu()">MENU</button>
                 </div>
-
                 <canvas id="gameCanvas" width="800" height="500"></canvas>
                 <div id="liveScore">0</div>
             </div>
 
             <div id="skins-panel">
-                <div class="skins-row">
-                    <div class="skins-label">BALLE</div>
-                    <div class="skins-container" id="ballSkinsContainer"></div>
-                </div>
-                <div class="skins-row">
-                    <div class="skins-label">RAQUETTE</div>
-                    <div class="skins-container" id="paddleSkinsContainer"></div>
-                </div>
+                <div class="skins-row"><div class="skins-label">BALLE</div><div class="skins-container" id="ballSkinsContainer"></div></div>
+                <div class="skins-row"><div class="skins-label">RAQUETTE</div><div class="skins-container" id="paddleSkinsContainer"></div></div>
             </div>
         </div>
 
         <div class="sidebar-column">
-            <div class="sidebar-box box-top10">
-                <h2 class="title-blue">TOP JOUEURS</h2>
-                <ul id="score-list"><li>Chargement...</li></ul>
-            </div>
-            <div class="sidebar-box box-recent">
-                <h2 class="title-red">5 DERNIERES PARTIES</h2>
-                <ul id="recent-list"><li style="color:#555; text-align:center;">En attente...</li></ul>
-            </div>
+            <div class="sidebar-box box-top10"><h2 class="title-blue">TOP 10 JOUEURS</h2><ul id="score-list"><li>Chargement...</li></ul></div>
+            <div class="sidebar-box box-recent"><h2 class="title-red">5 DERNIERES PARTIES</h2><ul id="recent-list"><li style="color:#555; text-align:center;">En attente...</li></ul></div>
         </div>
 
         <div class="sidebar-column">
-            <div class="sidebar-box box-perso">
-                <h2 class="title-pink">MES RECORDS</h2>
-                <ul id="personal-list"><li style="color:#555; justify-content: center;">Entre ton pseudo</li></ul>
-            </div>
-            <div class="sidebar-box box-active">
-                <h2 class="title-green">PLUS ACTIFS</h2>
-                <ul id="active-list"><li style="color:#555; justify-content: center;">En attente...</li></ul>
-            </div>
+            <div class="sidebar-box box-perso"><h2 class="title-pink">MES RECORDS</h2><ul id="personal-list"><li style="color:#555; justify-content: center;">Entre ton pseudo</li></ul></div>
+            <div class="sidebar-box box-active"><h2 class="title-green">PLUS ACTIFS</h2><ul id="active-list"><li style="color:#555; justify-content: center;">En attente...</li></ul></div>
         </div>
     </div>
 
-    <div class="footer-scroll">
-        <div class="scrolling-text">Jeu proposé par Kevin Couëdro  •  Jeu proposé par Kevin Couëdro  •  Jeu proposé par Kevin Couëdro  •  Jeu proposé par Kevin Couëdro</div>
-    </div>
+    <div class="footer-scroll"><div class="scrolling-text">Jeu proposé par Kevin Couëdro  •  Jeu proposé par Kevin Couëdro  •  Jeu proposé par Kevin Couëdro  •  Jeu proposé par Kevin Couëdro</div></div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -265,7 +204,7 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // CONSTANTS & STATE
+        // --- VARIABLES GLOBALES ---
         const BACKGROUNDS = [
             { id: 'bg-default', name: 'PAR DEFAUT', type: 'basic', css: '#000', price: 0 },
             { id: 'bg-black', name: 'NOIR', type: 'color', css: '#000', price: 1000 },
@@ -303,15 +242,15 @@
         let particles = [];
         let lastTime = 0;
         let lastSaveTime = 0;
-        
-        // DOM ELEMENTS
+
+        // DOM
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const nameInput = document.getElementById('playerNameInput');
         const coinDisplay = document.getElementById('coinDisplay');
         const bestScoreDisplay = document.getElementById('bestScoreDisplay');
 
-        // FUNCTIONS ATTACHED TO WINDOW FOR HTML ONCLICK
+        // --- ATTACH GLOBAL FUNCTIONS TO WINDOW ---
         window.openAdminModal = () => document.getElementById('admin-modal').style.display = 'flex';
         window.closeAdminModal = () => {
             document.getElementById('admin-modal').style.display = 'none';
@@ -326,85 +265,30 @@
             } else { document.getElementById('adminError').style.display = 'block'; }
         };
         window.openShop = () => {
-            if(!state.pseudo) { alert("Entre ton pseudo d'abord !"); return; }
+            if(!state.pseudo) { alert("Pseudo requis !"); return; }
             document.getElementById('shop-modal').style.display = 'flex';
             renderShop();
         };
         window.closeShop = () => document.getElementById('shop-modal').style.display = 'none';
+        
         window.startGame = async () => {
             const name = nameInput.value.trim().toUpperCase();
             if(!name) { alert("Entre un pseudo !"); return; }
             state.pseudo = name; localStorage.setItem('kevin_pseudo', name);
-            await checkOnlineData(); 
+            await checkOnlineData();
             document.getElementById('start-screen').style.display = 'none';
             document.getElementById('game-over-screen').style.display = 'none';
             resetGame(); state.running = true; lastTime = performance.now();
             requestAnimationFrame(gameLoop);
         };
+
         window.returnToMenu = () => {
             document.getElementById('game-over-screen').style.display = 'none';
             document.getElementById('start-screen').style.display = 'flex';
             initMenu(); ctx.clearRect(0, 0, canvas.width, canvas.height);
         };
 
-        // --- FIREBASE LOGIC ---
-        window.saveGameResults = async (name, points, earnedCoins) => {
-            if(!name || points === 0) return;
-            const now = Date.now();
-            if(now - lastSaveTime < 2000) return; lastSaveTime = now;
-            const cleanName = name.trim().toUpperCase();
-            try {
-                addDoc(collection(db, "history"), { name: cleanName, points: points, date: now });
-                const bestRef = doc(db, "best_scores", cleanName);
-                getDoc(bestRef).then(snap => {
-                    if (!snap.exists() || points > snap.data().points) {
-                        setDoc(bestRef, { name: cleanName, points: points, date: now }, { merge: true });
-                    }
-                });
-                const userRef = doc(db, "user_stats", cleanName);
-                const userSnap = await getDoc(userRef);
-                let myRecords = [], currentInventory = [], currentEquipped = 'bg-default', currentPlays = 0, currentCoins = 0;
-                if(userSnap.exists()) {
-                    const data = userSnap.data();
-                    myRecords = data.personalRecords || [];
-                    currentInventory = data.inventory || [];
-                    currentEquipped = data.equippedBg || 'bg-default';
-                    currentPlays = data.gamesPlayed || 0;
-                    currentCoins = data.coins || 0;
-                }
-                myRecords.push(points); myRecords.sort((a, b) => b - a); myRecords = myRecords.slice(0, 10);
-                await setDoc(userRef, { 
-                    name: cleanName, gamesPlayed: currentPlays + 1, coins: currentCoins + earnedCoins,
-                    personalRecords: myRecords, inventory: currentInventory, equippedBg: currentEquipped
-                }, { merge: true });
-                const globalStatsRef = doc(db, "stats", "global");
-                setDoc(globalStatsRef, { totalPoints: increment(points), totalGames: increment(1) }, { merge: true });
-                displayPersonalRecords(myRecords);
-            } catch (e) {}
-        };
-
-        window.addFreeCoins = async (name, amount) => {
-            const cleanName = name.trim().toUpperCase();
-            try { await setDoc(doc(db, "user_stats", cleanName), { coins: increment(amount) }, { merge: true }); } catch (e) {}
-        };
-
-        window.downloadDatabase = async () => {
-            const btn = document.getElementById('dlBtn'); btn.innerText = "TÉLÉCHARGEMENT..."; btn.disabled = true;
-            try {
-                const bestScoresSnap = await getDocs(collection(db, "best_scores"));
-                const userStatsSnap = await getDocs(collection(db, "user_stats"));
-                let data = { exportDate: new Date().toISOString(), best_scores: [], user_stats: [] };
-                bestScoresSnap.forEach(doc => data.best_scores.push(doc.data()));
-                userStatsSnap.forEach(doc => data.user_stats.push(doc.data()));
-                const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
-                const a = document.createElement('a'); a.href = url; a.download = `kevin_arcade_backup.json`;
-                document.body.appendChild(a); a.click(); document.body.removeChild(a);
-                btn.innerText = "SUCCÈS !"; setTimeout(() => btn.disabled = false, 2000);
-            } catch (e) { console.error(e); }
-        };
-
-        // --- SHOP LOGIC ---
-        window.buyItem = async (itemId, price) => { // Fixed params
+        window.buyItem = async (itemId, price) => {
              const cleanName = state.pseudo.trim().toUpperCase();
              const userRef = doc(db, "user_stats", cleanName);
              try {
@@ -414,14 +298,14 @@
                      if((d.coins || 0) >= price && !d.inventory?.includes(itemId)) {
                          let newInv = [...(d.inventory||[]), itemId];
                          await setDoc(userRef, { coins: d.coins - price, inventory: newInv }, { merge: true });
-                         state.coins -= price;
-                         state.inventory.push(itemId);
+                         state.coins -= price; state.inventory.push(itemId);
                          updateCoinDisplay(); renderShop();
                      }
                  }
              } catch(e) {}
         };
-        window.equipItem = async (bgId) => { // Fixed params
+
+        window.equipItem = async (bgId) => {
             state.equippedBg = bgId;
             document.getElementById('canvas-wrapper').className = bgId;
             const cleanName = state.pseudo.trim().toUpperCase();
@@ -429,83 +313,133 @@
             renderShop();
         };
 
-        // --- HELPERS ---
+        window.downloadDatabase = async () => {
+            const btn = document.getElementById('dlBtn'); btn.innerText = "DL..."; btn.disabled = true;
+            try {
+                const bestScoresSnap = await getDocs(collection(db, "best_scores"));
+                const userStatsSnap = await getDocs(collection(db, "user_stats"));
+                let data = { exportDate: new Date().toISOString(), best_scores: [], user_stats: [] };
+                bestScoresSnap.forEach(doc => data.best_scores.push(doc.data()));
+                userStatsSnap.forEach(doc => data.user_stats.push(doc.data()));
+                const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+                const a = document.createElement('a'); a.href = url; a.download = `kevin_arcade_backup.json`;
+                document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                btn.innerText = "SUCCÈS"; setTimeout(() => btn.disabled = false, 2000);
+            } catch (e) { console.error(e); }
+        };
+
+        // --- COIN BAG SYSTEM ---
+        const BAG_INTERVAL = 30000; // 30s
+        let bagElement = null;
+        let bagTimerInterval;
+        
+        function initCoinBag() {
+            setInterval(spawnBag, BAG_INTERVAL);
+        }
+
+        function spawnBag() {
+            if(bagElement) removeBag();
+            bagElement = document.createElement('div'); bagElement.id = 'coin-bag'; bagElement.innerHTML = '💰';
+            const t = document.createElement('div'); t.className = 'bag-timer'; t.innerText = "20s";
+            bagElement.appendChild(t);
+            
+            let x, y, attempts=0;
+            const gRect = document.getElementById('canvas-wrapper').getBoundingClientRect();
+            do {
+                x = Math.random() * (window.innerWidth - 80);
+                y = Math.random() * (window.innerHeight - 80);
+                attempts++;
+            } while ( (x > gRect.left-100 && x < gRect.right+100 && y > gRect.top-100 && y < gRect.bottom+100) && attempts < 50 );
+
+            bagElement.style.left = x + 'px'; bagElement.style.top = y + 'px';
+            bagElement.onclick = () => {
+                const reward = Math.floor(Math.random()*201)+50;
+                state.coins += reward; updateCoinDisplay();
+                
+                if(state.pseudo) {
+                    const cleanName = state.pseudo.trim().toUpperCase();
+                    setDoc(doc(db, "user_stats", cleanName), { coins: increment(reward) }, { merge: true });
+                }
+
+                const fb = document.createElement('div'); fb.className = 'coin-popup';
+                fb.style.left = bagElement.style.left; fb.style.top = bagElement.style.top;
+                fb.innerText = `+${reward}`; document.body.appendChild(fb);
+                setTimeout(() => fb.remove(), 1000);
+                removeBag();
+            };
+            document.body.appendChild(bagElement);
+
+            // Mouvement
+            let bx = x, by = y;
+            let vx = (Math.random()-0.5)*3; let vy = (Math.random()-0.5)*3;
+            
+            function animBag() {
+                if(!bagElement) return;
+                bx += vx; by += vy;
+                if(bx<=0 || bx>=window.innerWidth-60) vx*=-1;
+                if(by<=0 || by>=window.innerHeight-60) vy*=-1;
+                
+                // Rebond contre le jeu
+                const gr = document.getElementById('canvas-wrapper').getBoundingClientRect();
+                if(bx < gr.right && bx+60 > gr.left && by < gr.bottom && by+60 > gr.top) {
+                    vx*=-1; vy*=-1;
+                }
+                bagElement.style.left = bx+'px'; bagElement.style.top = by+'px';
+                requestAnimationFrame(animBag);
+            }
+            requestAnimationFrame(animBag);
+
+            // Timer
+            let time = 20;
+            if(bagTimerInterval) clearInterval(bagTimerInterval);
+            bagTimerInterval = setInterval(() => {
+                time--; if(t) t.innerText = time + "s";
+                if(time <= 0) removeBag();
+            }, 1000);
+        }
+
+        function removeBag() {
+            if(bagElement) { bagElement.remove(); bagElement = null; }
+            if(bagTimerInterval) clearInterval(bagTimerInterval);
+        }
+
+        // --- HELPER FUNCTIONS ---
+        function updateCoinDisplay() { coinDisplay.innerText = state.coins; }
+        
         function initMenu() {
             if(state.pseudo) { nameInput.value = state.pseudo; checkOnlineData(); }
             refreshAllSkins();
-            // COIN BAG INIT
-            setInterval(spawnCoinBag, 30000);
+            initCoinBag();
         }
-
-        nameInput.addEventListener('blur', () => {
-            state.pseudo = nameInput.value.trim().toUpperCase();
-            checkOnlineData();
-        });
+        
+        nameInput.addEventListener('blur', () => { state.pseudo = nameInput.value.trim().toUpperCase(); checkOnlineData(); });
 
         async function checkOnlineData() {
             const name = nameInput.value.trim().toUpperCase();
             if(!name) return;
-            if(window.fetchUserBestScore) {
-                const onlineBest = await fetchUserBestScore(name);
-                if(onlineBest > state.bestScore) state.bestScore = onlineBest;
-                bestScoreDisplay.innerText = state.bestScore;
-                refreshAllSkins();
-            }
-            if(window.fetchUserData) {
-                const userData = await fetchUserData(name);
-                if(userData) {
-                    state.coins = userData.coins || 0;
-                    state.inventory = userData.inventory || [];
-                    if(userData.equippedBg) {
-                        state.equippedBg = userData.equippedBg;
-                        document.getElementById('canvas-wrapper').className = userData.equippedBg;
-                    }
+            // Best Score
+            try {
+                const docRef = doc(db, "best_scores", name);
+                const snap = await getDoc(docRef);
+                if(snap.exists()) { state.bestScore = snap.data().points; bestScoreDisplay.innerText = state.bestScore; refreshAllSkins(); }
+            } catch(e) {}
+            // User Data
+            try {
+                const docRef = doc(db, "user_stats", name);
+                const snap = await getDoc(docRef);
+                if(snap.exists()) {
+                    const d = snap.data();
+                    state.coins = d.coins || 0; state.inventory = d.inventory || [];
+                    if(d.equippedBg) { state.equippedBg = d.equippedBg; document.getElementById('canvas-wrapper').className = d.equippedBg; }
                     updateCoinDisplay();
-                }
-            }
-            if(window.fetchPersonalRecords) await fetchPersonalRecords(name);
-        }
-
-        async function fetchUserBestScore(name) {
-            const cleanName = name.trim().toUpperCase();
-            try {
-                const docRef = doc(db, "best_scores", cleanName);
-                const docSnap = await getDoc(docRef);
-                if (docSnap.exists()) return docSnap.data().points;
-            } catch (e) { return 0; }
-            return 0;
-        }
-
-        async function fetchUserData(name) {
-            const cleanName = name.trim().toUpperCase();
-            try {
-                const docRef = doc(db, "user_stats", cleanName);
-                const docSnap = await getDoc(docRef);
-                if (docSnap.exists()) return docSnap.data();
-            } catch (e) { return null; }
-            return null;
-        }
-        
-        async function fetchPersonalRecords(name) {
-             const list = document.getElementById('personal-list');
-            if(!list || !name) return;
-            list.innerHTML = "<li style='justify-content:center; color:#888;'><i>Chargement...</i></li>";
-            const cleanName = name.trim().toUpperCase();
-            try {
-                const userRef = doc(db, "user_stats", cleanName);
-                const userSnap = await getDoc(userRef);
-                list.innerHTML = ""; 
-                if (!userSnap.exists() || !userSnap.data().personalRecords) {
-                    list.innerHTML = "<li style='justify-content:center; color:#555;'>Aucun record</li>";
-                    return;
-                }
-                displayPersonalRecords(userSnap.data().personalRecords);
-            } catch (e) { list.innerHTML = "<li style='color:red; font-size:10px'>Erreur connexion</li>"; }
+                    // Personal Records from Profile
+                    displayPersonalRecords(d.personalRecords || []);
+                } else { displayPersonalRecords([]); }
+            } catch(e) {}
         }
 
         function displayPersonalRecords(scores) {
-            const list = document.getElementById('personal-list');
-            if(!list) return; list.innerHTML = "";
+            const list = document.getElementById('personal-list'); if(!list) return; list.innerHTML = "";
             if(!scores || scores.length === 0) { list.innerHTML = "<li style='justify-content:center; color:#555;'>Aucun record</li>"; return; }
             scores.forEach((s, index) => {
                 const li = document.createElement('li');
@@ -513,8 +447,6 @@
                 list.appendChild(li);
             });
         }
-
-        function updateCoinDisplay() { coinDisplay.innerText = state.coins; }
 
         function renderShop() {
             const grid = document.getElementById('shopGrid'); grid.innerHTML = "";
@@ -562,85 +494,15 @@
             });
         }
 
-        // --- COIN BAG ---
-        let bagElement = null;
-        let bagTimerInterval;
-        
-        function spawnCoinBag() {
-            if(bagElement) removeCoinBag();
-            bagElement = document.createElement('div'); bagElement.id = 'coin-bag'; bagElement.innerHTML = '💰';
-            const t = document.createElement('div'); t.className = 'bag-timer'; t.innerText = "20s";
-            bagElement.appendChild(t);
-            
-            let x, y, attempts=0;
-            const gRect = document.getElementById('canvas-wrapper').getBoundingClientRect();
-            do {
-                x = Math.random() * (window.innerWidth - 80);
-                y = Math.random() * (window.innerHeight - 80);
-                attempts++;
-            } while ( (x > gRect.left-100 && x < gRect.right+100 && y > gRect.top-100 && y < gRect.bottom+100) && attempts < 50 );
-
-            bagElement.style.left = x + 'px'; bagElement.style.top = y + 'px';
-            bagElement.onclick = () => {
-                const reward = Math.floor(Math.random()*201)+50;
-                state.coins += reward; updateCoinDisplay();
-                if(state.pseudo) window.addFreeCoins(state.pseudo, reward);
-                
-                const fb = document.createElement('div'); fb.className = 'coin-popup';
-                fb.style.left = bagElement.style.left; fb.style.top = bagElement.style.top;
-                fb.innerText = `+${reward}`; document.body.appendChild(fb);
-                setTimeout(() => fb.remove(), 1000);
-                removeCoinBag();
-            };
-            document.body.appendChild(bagElement);
-
-            // Movement
-            let bx = x, by = y;
-            let vx = (Math.random()-0.5)*3; let vy = (Math.random()-0.5)*3;
-            function animBag() {
-                if(!bagElement) return;
-                bx += vx; by += vy;
-                if(bx<=0 || bx>=window.innerWidth-60) vx*=-1;
-                if(by<=0 || by>=window.innerHeight-60) vy*=-1;
-                const gr = document.getElementById('canvas-wrapper').getBoundingClientRect();
-                if(bx < gr.right && bx+60 > gr.left && by < gr.bottom && by+60 > gr.top) { vx*=-1; vy*=-1; }
-                bagElement.style.left = bx+'px'; bagElement.style.top = by+'px';
-                requestAnimationFrame(animBag);
-            }
-            requestAnimationFrame(animBag);
-
-            let time = 20;
-            if(bagTimerInterval) clearInterval(bagTimerInterval);
-            bagTimerInterval = setInterval(() => {
-                time--; if(t) t.innerText = time + "s";
-                if(time <= 0) removeCoinBag();
-            }, 1000);
-        }
-
-        function removeCoinBag() {
-            if(bagElement) { bagElement.remove(); bagElement = null; }
-            if(bagTimerInterval) clearInterval(bagTimerInterval);
-        }
-
         // --- GAME LOOP ---
-        window.addEventListener('mousemove', (e) => {
-            if(!state.running) return;
-            const rect = canvas.getBoundingClientRect();
-            const scaleX = canvas.width / rect.width;
-            let relativeX = (e.clientX - rect.left) * scaleX;
-            paddle.x = relativeX - (paddle.width / 2);
-            if(paddle.x < 0) paddle.x = 0;
-            if(paddle.x > canvas.width - paddle.width) paddle.x = canvas.width - paddle.width;
-        });
-        window.addEventListener('keydown', (e) => { if(e.code === 'Space') state.spacePressed = true; });
-        window.addEventListener('keyup', (e) => { if(e.code === 'Space') state.spacePressed = false; });
-
         function gameLoop(timestamp) {
             if(!state.running) return;
             const deltaTime = timestamp - lastTime; lastTime = timestamp;
-            const delta = deltaTime / 1000;
+            update(deltaTime); draw(); requestAnimationFrame(gameLoop);
+        }
 
-            state.hue = (state.hue + 2) % 360;
+        function update(dt) {
+            const delta = dt / 1000; state.hue = (state.hue + 2) % 360;
             for(let i=particles.length-1; i>=0; i--) {
                 particles[i].life -= 2 * delta; particles[i].x += particles[i].sx; particles[i].y += particles[i].sy;
                 if(particles[i].life <= 0) particles.splice(i,1);
@@ -662,37 +524,66 @@
                 }
             }
             if(ball.y > canvas.height) endGame();
+        }
 
-            // Draw
+        function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const ballColor = getDynamicColor(state.selectedBallColor);
+            const paddleColor = getDynamicColor(state.selectedPaddleColor);
             particles.forEach(p => { ctx.globalAlpha = p.life; ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill(); });
             ctx.globalAlpha = 1;
-            ctx.fillStyle = getDynamicColor(state.selectedPaddleColor);
-            ctx.shadowBlur = state.spacePressed ? 30 : 10; ctx.shadowColor = ctx.fillStyle;
+            ctx.fillStyle = paddleColor; ctx.shadowBlur = state.spacePressed ? 30 : 10; ctx.shadowColor = paddleColor;
             if(state.selectedPaddleColor === '#111') { ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.strokeRect(paddle.x, paddle.y, paddle.width, paddle.height); }
             ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
-            ctx.fillStyle = getDynamicColor(state.selectedBallColor); ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = 15;
+            ctx.fillStyle = ballColor; ctx.shadowColor = ballColor; ctx.shadowBlur = 15;
             ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur = 0;
-
-            requestAnimationFrame(gameLoop);
         }
 
         function getDynamicColor(c) { return c === 'rainbow' ? `hsl(${state.hue}, 100%, 50%)` : c; }
 
-        function endGame() {
+        async function endGame() {
             state.running = false;
             const earnedCoins = state.score; state.coins += earnedCoins;
             document.getElementById('coinsEarned').innerText = earnedCoins;
             document.getElementById('finalScore').innerText = state.score;
             updateCoinDisplay();
             if(state.score > state.bestScore) { state.bestScore = state.score; bestScoreDisplay.innerText = state.score; }
-            saveGameResults(state.pseudo, state.score, earnedCoins);
+            
+            // SAVE TO FIREBASE
+            const now = Date.now();
+            if(now - lastSaveTime > 2000) {
+                lastSaveTime = now;
+                const cleanName = state.pseudo.trim().toUpperCase();
+                
+                try {
+                    addDoc(collection(db, "history"), { name: cleanName, points: state.score, date: now });
+                    const bestRef = doc(db, "best_scores", cleanName);
+                    getDoc(bestRef).then(snap => {
+                        if (!snap.exists() || state.score > snap.data().points) {
+                            setDoc(bestRef, { name: cleanName, points: state.score, date: now }, { merge: true });
+                        }
+                    });
+                    const userRef = doc(db, "user_stats", cleanName);
+                    const userSnap = await getDoc(userRef);
+                    let myRecords = userSnap.exists() ? (userSnap.data().personalRecords || []) : [];
+                    myRecords.push(state.score);
+                    myRecords.sort((a, b) => b - a);
+                    myRecords = myRecords.slice(0, 10);
+                    await setDoc(userRef, { 
+                        name: cleanName, gamesPlayed: increment(1), coins: increment(earnedCoins),
+                        personalRecords: myRecords, inventory: state.inventory, equippedBg: state.equippedBg
+                    }, { merge: true });
+                    setDoc(doc(db, "stats", "global"), { totalPoints: increment(state.score), totalGames: increment(1) }, { merge: true });
+                    displayPersonalRecords(myRecords);
+                } catch(e) {}
+            }
+            
             setTimeout(() => checkOnlineData(), 1000);
             document.getElementById('game-over-screen').style.display = 'flex';
         }
 
-        // LISTENERS
-        onSnapshot(query(collection(db, "best_scores"), orderBy("points", "desc")), (snap) => {
+        // LISTENERS LIVE
+        onSnapshot(query(collection(db, "best_scores"), orderBy("points", "desc"), limit(10)), (snap) => {
             const list = document.getElementById('score-list'); if(!list) return; list.innerHTML = "";
             let rank = 1;
             snap.forEach(doc => {
@@ -726,10 +617,7 @@
             }
         });
 
-        // INIT
+        // INIT CALLS
         initMenu();
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
     </script>
-</body>
 </html>
