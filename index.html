@@ -3,33 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jeu Kevin - Arcade V47 SCROLL FIX</title>
+    <title>Jeu Kevin - Arcade V48 MASTER</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; }
-        
-        /* --- CORRECTION MAJEURE DU BODY (SCROLL) --- */
         body {
             margin: 0; padding: 0; background-color: #050510; 
             font-family: 'Orbitron', sans-serif; color: white; 
-            min-height: 100vh; /* Au moins la taille de l'écran */
-            height: auto; /* Peut grandir si besoin */
-            overflow-y: auto; /* AUTORISE LE SCROLL VERTICAL */
+            min-height: 100vh; /* Au moins la hauteur de l'écran */
+            height: auto; /* Permet le scroll */
+            overflow-y: auto; /* Scroll activé */
             display: flex; flex-direction: column; justify-content: center; align-items: center; user-select: none;
             padding-bottom: 50px; /* Espace pour le footer */
         }
-
-        /* --- LAYOUT --- */
-        #main-layout { 
-            display: flex; gap: 20px; align-items: flex-start; 
-            height: auto; /* S'adapte */
-            width: 95%; max-width: 1400px; justify-content: center; z-index: 5; 
-            margin-top: 60px; /* Espace pour la barre du haut */
-            margin-bottom: 40px;
-            flex-wrap: wrap; /* Permet de passer à la ligne sur petit écran */
-        }
-
-        #game-column { display: flex; flex-direction: column; gap: 15px; }
 
         /* --- CANVAS --- */
         #canvas-wrapper {
@@ -40,59 +26,7 @@
         }
         canvas { display: block; width: 100%; height: 100%; }
 
-        /* --- SKINS PANEL --- */
-        #skins-panel { 
-            width: 800px; 
-            padding: 15px 20px;
-            background: rgba(15, 15, 25, 0.9); 
-            border: 1px solid #333; border-radius: 12px; 
-            display: flex; flex-direction: column; gap: 10px; 
-            height: auto; /* Hauteur libre */
-        }
-        .skins-row { display: flex; align-items: center; gap: 15px; }
-        .skins-label { width: 80px; font-size: 11px; color: #888; text-align: right; font-weight: bold; }
-        .skins-container { display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
-        
-        .skin-wrapper { display: flex; flex-direction: column; align-items: center; }
-        .skin-btn { 
-            width: 30px; height: 30px; border-radius: 50%; border: 2px solid #333; cursor: pointer; position: relative; transition: 0.2s;
-        }
-        .skin-btn:hover { transform: scale(1.1); }
-        .skin-btn.locked { opacity: 0.3; cursor: not-allowed; } 
-        .skin-btn.locked::after { content: '🔒'; position: absolute; top: 4px; left: 6px; font-size: 12px; color: white; }
-        .skin-btn.selected { border-color: white; box-shadow: 0 0 10px white; }
-        .skin-req { font-size: 9px; color: #666; margin-top: 4px; }
-
-        /* --- SIDEBARS --- */
-        .sidebar-column { 
-            width: 260px; 
-            /* Hauteur minimale mais extensible */
-            min-height: 600px; 
-            display: flex; flex-direction: column; gap: 15px; 
-        }
-        .sidebar-box { 
-            background: rgba(15, 15, 25, 0.9); border: 1px solid #00d4ff; 
-            border-radius: 12px; padding: 10px; 
-            display: flex; flex-direction: column; 
-            box-shadow: 0 0 20px rgba(0,0,0,0.5); overflow: hidden; 
-            flex: 1; /* Partage l'espace */
-        }
-        .box-top10 { border-color: #00d4ff; } 
-        .box-recent { border-color: #ff4757; } 
-        .box-perso { border-color: #ff6b6b; } 
-        .box-active { border-color: #2ecc71; }
-
-        h2 { text-align: center; margin: 0 0 5px 0; font-size: 13px; border-bottom: 2px solid; padding-bottom: 5px; text-transform: uppercase; }
-        .title-blue { color: #00d4ff; border-color: #00d4ff33; } 
-        .title-red { color: #ff4757; border-color: #ff475733; }
-        .title-pink { color: #ff6b6b; border-color: #ff6b6b33; } 
-        .title-green { color: #2ecc71; border-color: #2ecc7133; }
-
-        ul { list-style: none; padding: 0; overflow-y: auto; flex-grow: 1; margin: 0; }
-        li { padding: 5px; border-bottom: 1px solid #ffffff10; display: flex; justify-content: space-between; font-size: 11px; align-items: center; }
-        ul::-webkit-scrollbar { width: 3px; } ul::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
-
-        /* --- BACKGROUNDS CSS --- */
+        /* --- BACKGROUNDS --- */
         .bg-default { background: #000 !important; }
         .bg-black { background: #000 !important; }
         .bg-red { background: linear-gradient(135deg, #300, #000) !important; }
@@ -106,6 +40,18 @@
         .bg-beach { background: linear-gradient(to bottom, #2980b9, #6dd5fa, #ffffff) !important; }
         @keyframes rainbow { 0% {background-position: 0% 50%;} 50% {background-position: 100% 50%;} 100% {background-position: 0% 50%;} }
 
+        /* --- LAYOUT --- */
+        #main-layout { 
+            display: flex; gap: 20px; align-items: flex-start; 
+            height: auto; width: 95%; max-width: 1400px; 
+            justify-content: center; z-index: 5; margin-top: 80px;
+            flex-wrap: wrap; /* Important pour responsive */
+        }
+        #game-column { display: flex; flex-direction: column; gap: 15px; }
+        
+        /* ZONE DROITE (Position Relative pour le sac) */
+        #data-zone { display: flex; gap: 15px; position: relative; min-height: 600px; }
+
         /* --- UI HEADER --- */
         #top-left-ui { position: absolute; top: 20px; left: 20px; z-index: 50; display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
         #settings-btn { width: 40px; height: 40px; background: rgba(0,0,0,0.8); border: 2px solid #888; border-radius: 50%; cursor: pointer; display: flex; justify-content: center; align-items: center; font-size: 20px; transition: 0.2s; }
@@ -116,10 +62,15 @@
         .coin-balance { font-size: 16px; color: #ffd700; font-weight: bold; }
         .info-pill { background: rgba(0,0,0,0.8); padding: 8px 15px; border-radius: 30px; border: 1px solid #fff; font-size: 12px; font-weight: bold; display: flex; align-items: center; gap: 10px; }
         
+        /* LEVEL BAR */
         #level-container { display: flex; flex-direction: column; width: 100px; justify-content: center; }
         #level-text { font-size: 10px; color: #00d4ff; margin-bottom: 2px; font-weight: bold; }
         #xp-bar-bg { width: 100%; height: 4px; background: #333; border-radius: 2px; overflow: hidden; }
         #xp-bar-fill { height: 100%; background: #00d4ff; width: 0%; transition: width 0.5s ease; }
+
+        /* --- LEAGUE TAB --- */
+        #league-tab { background: rgba(0,0,0,0.9); border: 2px solid #fff; padding: 10px 0; border-radius: 12px; text-align: center; cursor: pointer; transition: 0.2s; position: relative; margin-bottom: -5px; z-index: 10; font-weight: bold; }
+        #league-tab:hover { transform: translateY(-2px); box-shadow: 0 0 15px rgba(255,255,255,0.3); }
 
         /* --- COIN BAG --- */
         #coin-bag {
@@ -127,11 +78,11 @@
             background: radial-gradient(circle at 30% 30%, #ffd700, #b8860b);
             border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 20px #ffd700;
             display: flex; justify-content: center; align-items: center; font-size: 30px;
-            cursor: pointer; z-index: 2147483647; 
+            cursor: pointer; z-index: 9999; 
             transition: top 1s linear, left 1s linear;
         }
         #coin-bag:active { transform: scale(0.9); }
-        .bag-timer { position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%); background: #000; font-size: 10px; padding: 2px 5px; border-radius: 5px; pointer-events: none;}
+        .bag-timer { position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%); background: #000; font-size: 10px; padding: 2px 5px; border-radius: 5px; pointer-events: none; white-space: nowrap; }
         .coin-popup { position: absolute; color: #ffd700; font-weight: bold; font-size: 24px; text-shadow: 0 0 10px #000; pointer-events: none; animation: floatUp 1s forwards; z-index: 100000; }
         @keyframes floatUp { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-50px); opacity: 0; } }
 
@@ -144,25 +95,55 @@
         
         .shop-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; overflow-y: auto; padding-right: 10px; }
         .shop-item { background: #222; border: 1px solid #444; border-radius: 10px; padding: 10px; display: flex; flex-direction: column; align-items: center; gap: 5px; transition: 0.2s; }
+        .shop-item:hover { border-color: #ffd700; }
         .item-preview { width: 100%; height: 60px; border-radius: 5px; margin-bottom: 5px; border: 1px solid #555; }
         .item-name { font-size: 12px; font-weight: bold; color: #fff; }
         .item-price { color: #ffd700; font-size: 12px; }
         .shop-action-btn { width: 100%; padding: 5px; border-radius: 5px; cursor: pointer; font-weight: bold; border: none; font-family: 'Orbitron'; }
         .btn-buy { background: #ffd700; color: #000; } .btn-equip { background: #00d4ff; color: #000; } .btn-equipped { background: #2ecc71; color: #fff; }
 
-        /* --- LEAGUE MODAL LIST --- */
+        /* LEAGUE LIST */
         .league-list { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
         .league-item { padding: 15px; border-radius: 8px; border: 1px solid #444; background: #222; display: flex; justify-content: space-between; align-items: center; }
         .league-item.active { border: 2px solid #fff; background: #333; }
         .league-title { font-weight: bold; font-size: 16px; }
         .league-req { color: #aaa; font-size: 12px; }
+        
+        /* LEAGUE COLORS */
+        .league-master { color: #ff4757; border-color: #ff4757 !important; text-shadow: 0 0 10px #ff4757; }
+        .league-diamond { color: #00d4ff; border-color: #00d4ff !important; text-shadow: 0 0 10px #00d4ff; }
+        .league-gold { color: #ffd700; border-color: #ffd700 !important; text-shadow: 0 0 10px #ffd700; }
+        .league-silver { color: #c0c0c0; border-color: #c0c0c0 !important; text-shadow: 0 0 10px #c0c0c0; }
+        .league-bronze { color: #cd7f32; border-color: #cd7f32 !important; text-shadow: 0 0 10px #cd7f32; }
+        .league-poop { color: #8b4513; border-color: #8b4513 !important; }
 
-        /* --- FOOTER --- */
+        /* --- SIDEBARS --- */
+        .sidebar-column { width: 260px; min-height: 600px; display: flex; flex-direction: column; gap: 15px; }
+        .sidebar-box { background: rgba(15, 15, 25, 0.9); border: 1px solid #00d4ff; border-radius: 12px; padding: 10px; display: flex; flex-direction: column; box-shadow: 0 0 20px rgba(0,0,0,0.5); overflow: hidden; flex: 1; }
+        .box-top10 { border-color: #00d4ff; } .box-recent { border-color: #ff4757; } .box-perso { border-color: #ff6b6b; } .box-active { border-color: #2ecc71; }
+        h2 { text-align: center; margin: 0 0 5px 0; font-size: 13px; border-bottom: 2px solid; padding-bottom: 5px; text-transform: uppercase; }
+        .title-blue { color: #00d4ff; border-color: #00d4ff33; } .title-red { color: #ff4757; border-color: #ff475733; }
+        .title-pink { color: #ff6b6b; border-color: #ff6b6b33; } .title-green { color: #2ecc71; border-color: #2ecc7133; }
+        ul { list-style: none; padding: 0; overflow-y: auto; flex-grow: 1; margin: 0; }
+        li { padding: 5px; border-bottom: 1px solid #ffffff10; display: flex; justify-content: space-between; font-size: 11px; align-items: center; }
+        ul::-webkit-scrollbar { width: 3px; } ul::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+
+        /* --- SKINS PANEL --- */
+        #skins-panel { width: 800px; padding: 15px 20px; background: rgba(15, 15, 25, 0.9); border: 1px solid #333; border-radius: 12px; display: flex; flex-direction: column; gap: 10px; height: auto; }
+        .skins-row { display: flex; align-items: center; gap: 15px; }
+        .skins-label { width: 70px; font-size: 11px; color: #888; text-align: right; font-weight: bold; }
+        .skins-container { display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
+        .skin-wrapper { display: flex; flex-direction: column; align-items: center; }
+        .skin-btn { width: 30px; height: 30px; border-radius: 50%; border: 2px solid #333; cursor: pointer; position: relative; transition: 0.2s; }
+        .skin-btn:hover { transform: scale(1.1); }
+        .skin-btn.locked { opacity: 0.3; cursor: not-allowed; } .skin-btn.locked::after { content: '🔒'; position: absolute; top: 4px; left: 6px; font-size: 12px; color: white; }
+        .skin-btn.selected { border-color: white; box-shadow: 0 0 10px white; }
+        .skin-req { font-size: 9px; color: #666; margin-top: 4px; }
+
+        /* FOOTER & OVERLAYS */
         .footer-scroll { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(0,0,0,0.9); border-top: 1px solid #333; height: 30px; overflow: hidden; display: flex; align-items: center; z-index: 100; }
         .scrolling-text { animation: scroll 20s linear infinite; color: #00d4ff; font-size: 12px; white-space: nowrap; padding-left: 100%; }
         @keyframes scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
-
-        /* --- OVERLAYS --- */
         .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 20; display: flex; flex-direction: column; justify-content: center; align-items: center; border-radius: 12px; }
         input { padding: 15px; font-size: 20px; background: #0f0f1e; border: 2px solid #00d4ff; color: white; text-align: center; border-radius: 8px; outline: none; margin-bottom: 20px; text-transform: uppercase; }
         .btn { padding: 15px 50px; font-size: 22px; background: linear-gradient(90deg, #00d4ff, #005bea); border: none; color: white; font-weight: bold; cursor: pointer; border-radius: 50px; }
@@ -170,11 +151,11 @@
         #liveScore { position: absolute; top: 20px; left: 20px; font-size: 32px; font-weight: bold; color: #ffffff40; pointer-events: none; }
         
         @media (max-width: 1400px) {
-            #main-layout { flex-wrap: wrap; height: auto; margin-bottom: 60px; justify-content: center; }
-            .sidebar-column { width: 90%; max-width: 600px; height: auto; min-height: 400px; }
-            #game-column { width: 100%; align-items: center; }
+            #main-layout { flex-wrap: wrap; height: auto; margin-bottom: 60px; }
+            .sidebar-column { width: 45%; height: 400px; order: 2; }
+            #game-column { width: 100%; align-items: center; order: 1; }
             #canvas-wrapper, #skins-panel { width: 100%; max-width: 800px; }
-            #data-zone { width: 100%; flex-direction: column; align-items: center; }
+            #data-zone { width: 100%; flex-direction: row; justify-content: space-between; }
         }
     </style>
 </head>
@@ -227,7 +208,7 @@
 
     <div id="main-layout">
         <div id="game-column">
-            <div id="league-tab" style="background:rgba(0,0,0,0.8); border:1px solid #fff; border-radius:8px; padding:5px; text-align:center; cursor:pointer; margin-bottom:-5px; z-index:10; font-weight:bold;">
+            <div id="league-tab" onclick="openLeagueModal()">
                 LIGUE : <span id="league-name">CHARGEMENT...</span>
             </div>
 
@@ -236,7 +217,7 @@
 
                 <div id="start-screen" class="overlay">
                     <h1 style="color:#00d4ff; text-shadow:0 0 20px #00d4ff; margin-bottom: 5px;">JEU KEVIN</h1>
-                    <p style="color:#888; font-size: 12px; margin-bottom: 15px;">ULTIMATE V47</p>
+                    <p style="color:#888; font-size: 12px; margin-bottom: 15px;">ULTIMATE V48</p>
                     <p style="color:#ffd700; font-size: 16px; margin-bottom: 30px;">MEILLEUR SCORE : <span id="bestScoreDisplay">0</span></p>
                     <input type="text" id="playerNameInput" placeholder="PSEUDO" maxlength="12">
                     <button class="btn" id="play-btn">JOUER</button>
@@ -291,7 +272,7 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // DOM ELEMENTS
+        // DOM
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const nameInput = document.getElementById('playerNameInput');
@@ -300,32 +281,16 @@
         const levelText = document.getElementById('level-text');
         const xpBarFill = document.getElementById('xp-bar-fill');
         
-        // EVENT LISTENERS INIT
-        document.getElementById('settings-btn').addEventListener('click', () => document.getElementById('admin-modal').style.display = 'flex');
-        document.getElementById('close-admin').addEventListener('click', () => document.getElementById('admin-modal').style.display = 'none');
-        document.getElementById('shop-btn-container').addEventListener('click', openShop);
-        document.getElementById('close-shop').addEventListener('click', () => document.getElementById('shop-modal').style.display = 'none');
-        document.getElementById('validate-admin').addEventListener('click', checkAdminCode);
-        document.getElementById('dlBtn').addEventListener('click', downloadDatabase);
-        
-        // BOUTONS JEU
-        document.getElementById('play-btn').addEventListener('click', startGame);
-        document.getElementById('menu-btn').addEventListener('click', returnToMenu);
-        
-        // LEAGUE
-        document.getElementById('league-tab').addEventListener('click', () => { updateLeagueInfo(); document.getElementById('league-modal').style.display = 'flex'; });
-        document.getElementById('close-league').addEventListener('click', () => document.getElementById('league-modal').style.display = 'none');
-
         // CONSTANTS
         const XP_FACTORS = [1, 0.99, 0.99, 0.98, 0.98, 0.97, 0.97, 0.96, 0.96, 0.95, 0.95, 0.94, 0.94, 0.93, 0.93, 0.92, 0.92, 0.91, 0.91, 0.9, 0.9, 0.89, 0.89, 0.88, 0.88, 0.87, 0.87, 0.86, 0.86, 0.85, 0.85, 0.84, 0.84, 0.83, 0.83, 0.82, 0.82, 0.81, 0.81, 0.8, 0.8, 0.79, 0.79, 0.78, 0.78, 0.77, 0.77, 0.76, 0.76, 0.75, 0.75, 0.74, 0.74, 0.73, 0.73, 0.72, 0.72, 0.71, 0.71, 0.7, 0.7, 0.69, 0.69, 0.68, 0.68, 0.64, 0.64, 0.6, 0.6, 0.56, 0.56, 0.52, 0.52, 0.48, 0.48, 0.44, 0.44, 0.4, 0.4, 0.36, 0.36, 0.32, 0.32, 0.3, 0.3, 0.25, 0.25, 0.25, 0.25, 0.2, 0.2, 0.2, 0.2, 0.2, 0.1, 0.1, 0.1, 0.05, 0.05, 0.05];
         
         const LEAGUES = [
-            { name: "MASTER", color: "#ff4757", icon: "👹" },
-            { name: "DIAMANT", color: "#00d4ff", icon: "💎" },
-            { name: "OR", color: "#ffd700", icon: "🥇" },
-            { name: "ARGENT", color: "#c0c0c0", icon: "🥈" },
-            { name: "BRONZE", color: "#cd7f32", icon: "🥉" },
-            { name: "POOP", color: "#8b4513", icon: "💩" }
+            { name: "MASTER", color: "#ff4757", icon: "👹", percent: 0 },
+            { name: "DIAMANT", color: "#00d4ff", icon: "💎", percent: 0.1 },
+            { name: "OR", color: "#ffd700", icon: "🥇", percent: 0.25 },
+            { name: "ARGENT", color: "#c0c0c0", icon: "🥈", percent: 0.5 },
+            { name: "BRONZE", color: "#cd7f32", icon: "🥉", percent: 0.8 },
+            { name: "POOP", color: "#8b4513", icon: "💩", percent: 1.0 }
         ];
 
         const BACKGROUNDS = [
@@ -362,12 +327,31 @@
         let ball = { x: 400, y: 300, dx: 0, dy: 0, speedBase: 400, speed: 400, radius: 8 };
         let paddle = { x: 340, y: 460, width: 120, height: 15 };
         let particles = [];
-        let lastTime = 0; let lastSaveTime = 0;
-        let bagElement = null; let bagTimerInterval; let bagMainInterval;
+        let lastTime = 0;
+        let lastSaveTime = 0;
+        let bagElement = null;
+        let bagTimerInterval;
+        let bagMainInterval;
 
         // --- INIT ---
-        if(state.pseudo) { nameInput.value = state.pseudo; checkOnlineData(); }
-        refreshAllSkins(); initCoinBagLoop(); ctx.clearRect(0, 0, 800, 500);
+        window.onload = () => {
+            // ATTACH CLICK HANDLERS (The Safe Way)
+            document.getElementById('settings-btn').onclick = () => document.getElementById('admin-modal').style.display = 'flex';
+            document.getElementById('close-admin').onclick = () => document.getElementById('admin-modal').style.display = 'none';
+            document.getElementById('shop-btn-container').onclick = openShop;
+            document.getElementById('close-shop').onclick = () => document.getElementById('shop-modal').style.display = 'none';
+            document.getElementById('validate-admin').onclick = checkAdminCode;
+            document.getElementById('dlBtn').onclick = downloadDatabase;
+            document.getElementById('play-btn').onclick = startGame;
+            document.getElementById('menu-btn').onclick = returnToMenu;
+            document.getElementById('league-tab').onclick = () => { updateLeagueInfo(); document.getElementById('league-modal').style.display = 'flex'; };
+            document.getElementById('close-league').onclick = () => document.getElementById('league-modal').style.display = 'none';
+
+            if(state.pseudo) { nameInput.value = state.pseudo; checkOnlineData(); }
+            refreshAllSkins();
+            initCoinBagLoop();
+            ctx.clearRect(0, 0, 800, 500);
+        };
 
         // --- FUNCTIONS ---
         function calculateLevel(xp) { return Math.floor(xp / 100) + 1; }
@@ -417,6 +401,7 @@
             });
         }
 
+        // --- COIN BAG (RIGHT ZONE) ---
         const BAG_INTERVAL = 30000; 
         function initCoinBagLoop() {
             if(bagMainInterval) clearInterval(bagMainInterval);
@@ -473,6 +458,7 @@
             if(bagTimerInterval) clearInterval(bagTimerInterval);
         }
 
+        // --- FIREBASE ---
         async function saveGameResults(name, points, earnedCoins) {
             if(!name || points === 0) return;
             const now = Date.now();
@@ -493,7 +479,6 @@
                     currentPlays = data.gamesPlayed || 0; currentCoins = data.coins || 0; currentXP = data.xp || 0;
                 }
                 myRecords.push(points); myRecords.sort((a, b) => b - a); myRecords = myRecords.slice(0, 10);
-                
                 const currentLevel = calculateLevel(currentXP);
                 const factorIndex = Math.min(currentLevel - 1, XP_FACTORS.length - 1);
                 const factor = XP_FACTORS[factorIndex];
@@ -546,7 +531,8 @@
         async function fetchPersonalRecordsFallback(name) {
             const q = query(collection(db, "history"), where("name", "==", name));
             const snap = await getDocs(q);
-            let scores = []; snap.forEach(doc => scores.push(doc.data().points));
+            let scores = [];
+            snap.forEach(doc => scores.push(doc.data().points));
             scores.sort((a,b) => b-a); scores = scores.slice(0, 10);
             if(scores.length > 0) { displayPersonalRecords(scores); setDoc(doc(db, "user_stats", name), { personalRecords: scores }, { merge: true }); }
         }
@@ -559,6 +545,7 @@
 
         function updateCoinDisplay() { coinDisplay.innerText = state.coins; }
 
+        // --- SHOP & ADMIN ---
         function checkAdminCode() { if(document.getElementById('adminCodeInput').value === "KC2523COUEDRO") { document.getElementById('adminLogin').style.display = 'none'; document.getElementById('adminPanel').style.display = 'flex'; } else { document.getElementById('adminError').style.display = 'block'; } }
         async function downloadDatabase() {
             const btn = document.getElementById('dlBtn'); btn.innerText = "DL..."; btn.disabled = true;
@@ -628,6 +615,7 @@
             });
         }
 
+        // --- GAME LOOP ---
         window.addEventListener('mousemove', (e) => {
             if(!state.running) return;
             const rect = canvas.getBoundingClientRect();
@@ -710,6 +698,7 @@
             initMenu(); ctx.clearRect(0, 0, 800, 500);
         }
 
+        // LISTENERS
         onSnapshot(query(collection(db, "best_scores"), orderBy("points", "desc")), snap => {
             const l = document.getElementById('score-list'); if(l) l.innerHTML = "";
             let r = 1;
@@ -727,7 +716,7 @@
         onSnapshot(query(collection(db, "user_stats"), orderBy("gamesPlayed", "desc"), limit(10)), snap => {
             const l = document.getElementById('active-list'); if(l) l.innerHTML = "";
             let r = 1;
-            snap.forEach(d => l.innerHTML += `<li style="border-color:#2ecc7133"><div style="display:flex; gap:10px;"><span style="opacity:0.5; width:20px;">#${r}</span><span>${d.data().name}</span></div><span style="color:#2ecc71">${d.data().gamesPlayed||0}</span></li>`); r++;
+            snap.forEach(d => l.innerHTML += `<li style="border-color:#2ecc7133"><div style="display:flex; gap:10px;"><span style="opacity:0.5; width:25px;">#${r}</span><span>${d.data().name}</span></div><span style="color:#2ecc71">${d.data().gamesPlayed||0}</span></li>`); r++;
         });
         onSnapshot(doc(db, "stats", "global"), snap => {
             if(snap.exists()) document.getElementById('avgScore').innerText = Math.round(snap.data().totalPoints/snap.data().totalGames) || 0;
