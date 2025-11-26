@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jeu Kevin - Arcade V20 Ultimate</title>
+    <title>Jeu Kevin - Arcade V21 Admin</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
     
     <script type="module">
@@ -26,6 +26,7 @@
 
         let lastSaveTime = 0;
 
+        // --- SAUVEGARDE ---
         window.saveGameResults = async (name, points, earnedCoins) => {
             if(!name || points === 0) return;
             const now = Date.now();
@@ -87,18 +88,12 @@
             try {
                 const userRef = doc(db, "user_stats", cleanName);
                 const userSnap = await getDoc(userRef);
-                
                 list.innerHTML = ""; 
                 if (!userSnap.exists() || !userSnap.data().personalRecords) {
                     list.innerHTML = "<li style='justify-content:center; color:#555;'>Aucun record</li>";
                     return;
                 }
-                const scores = userSnap.data().personalRecords;
-                scores.forEach((s, index) => {
-                    const li = document.createElement('li');
-                    li.innerHTML = `<span>#${index+1}</span> <span style="color:#00d4ff">${s}</span>`;
-                    list.appendChild(li);
-                });
+                displayPersonalRecords(userSnap.data().personalRecords);
             } catch (e) { list.innerHTML = "<li style='color:red; font-size:10px'>Erreur connexion</li>"; }
         };
 
@@ -163,6 +158,68 @@
             await setDoc(statsRef, { equippedBg: bgId }, { merge: true });
         };
 
+        // --- ADMINISTRATION / EXPORT BDD ---
+        window.checkAdminCode = () => {
+            const code = document.getElementById('adminCodeInput').value;
+            const errorMsg = document.getElementById('adminError');
+            const panel = document.getElementById('adminPanel');
+            const login = document.getElementById('adminLogin');
+
+            if(code === "KC2523COUEDRO") {
+                errorMsg.style.display = 'none';
+                login.style.display = 'none';
+                panel.style.display = 'flex';
+            } else {
+                errorMsg.style.display = 'block';
+            }
+        };
+
+        window.downloadDatabase = async () => {
+            const btn = document.getElementById('dlBtn');
+            btn.innerText = "TÉLÉCHARGEMENT...";
+            btn.disabled = true;
+
+            try {
+                // Récupération de toutes les collections importantes
+                const bestScoresSnap = await getDocs(collection(db, "best_scores"));
+                const userStatsSnap = await getDocs(collection(db, "user_stats"));
+                const historySnap = await getDocs(collection(db, "history"));
+
+                let data = {
+                    exportDate: new Date().toISOString(),
+                    best_scores: [],
+                    user_stats: [],
+                    history: []
+                };
+
+                bestScoresSnap.forEach(doc => data.best_scores.push(doc.data()));
+                userStatsSnap.forEach(doc => data.user_stats.push(doc.data()));
+                historySnap.forEach(doc => data.history.push(doc.data()));
+
+                // Création du fichier JSON
+                const dataStr = JSON.stringify(data, null, 2);
+                const blob = new Blob([dataStr], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `kevin_arcade_backup_${Date.now()}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                btn.innerText = "SUCCÈS !";
+                setTimeout(() => { btn.innerText = "TÉLÉCHARGER LA BDD"; btn.disabled = false; }, 2000);
+
+            } catch (e) {
+                console.error(e);
+                btn.innerText = "ERREUR (Voir Console)";
+                btn.disabled = false;
+            }
+        };
+
+        // --- LISTENERS LIVE ---
         const qTop = query(collection(db, "best_scores"), orderBy("points", "desc"), limit(10));
         onSnapshot(qTop, (snapshot) => {
             const list = document.getElementById('score-list');
@@ -215,30 +272,22 @@
             transition: background 0.5s ease;
         }
 
-        /* LE BACKGROUND S'APPLIQUE MAINTENANT SUR LE WRAPPER, PAS LE BODY */
         #canvas-wrapper {
-            position: relative; border: 2px solid #333; 
-            /* Default noir */
-            background: #000;
+            position: relative; border: 2px solid #333; background: #000;
             width: 800px; height: 500px; border-radius: 12px;
             box-shadow: 0 0 50px rgba(0, 212, 255, 0.1);
-            overflow: hidden;
-            transition: background 0.3s;
+            overflow: hidden; transition: background 0.3s;
         }
 
-        /* Styles des Backgrounds (Appliqués au Wrapper) */
         #canvas-wrapper.bg-default { background: #000; }
         #canvas-wrapper.bg-black { background: #000; }
         #canvas-wrapper.bg-red { background: linear-gradient(135deg, #300, #000); }
         #canvas-wrapper.bg-blue { background: linear-gradient(135deg, #003, #000); }
         #canvas-wrapper.bg-green { background: linear-gradient(135deg, #030, #000); }
-        
-        /* MONOGRAMME RSB */
         #canvas-wrapper.bg-rsb { 
             background-color: #ffffff;
             background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Ctext x='50' y='50' font-family='Arial' font-weight='bold' font-size='24' fill='%23000080' opacity='0.15' text-anchor='middle' dominant-baseline='central' transform='rotate(-30 50 50)'%3ERSB%3C/text%3E%3C/svg%3E");
         }
-
         #canvas-wrapper.bg-space { background: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%); }
         #canvas-wrapper.bg-rainbow { background: linear-gradient(45deg, #ff0000, #ff7300, #fffb00, #48ff00, #00ffd5, #002bff, #7a00ff, #ff00c8, #ff0000); background-size: 400%; animation: rainbow 20s linear infinite; }
         #canvas-wrapper.bg-forest { background: linear-gradient(to bottom, #134e5e, #71b280); }
@@ -251,23 +300,41 @@
         #main-layout { display: flex; gap: 20px; align-items: flex-start; height: 80vh; width: 95%; max-width: 1400px; justify-content: center; z-index: 5; }
         #game-column { display: flex; flex-direction: column; gap: 15px; }
 
-        #shop-btn-container {
+        /* TOP LEFT UI (Shop + Settings) */
+        #top-left-ui {
             position: absolute; top: 20px; left: 20px; z-index: 50;
-            display: flex; align-items: center; gap: 10px;
-            background: rgba(0,0,0,0.8); padding: 10px 20px; border-radius: 30px;
+            display: flex; gap: 10px; align-items: center;
+        }
+
+        #settings-btn {
+            width: 40px; height: 40px; background: rgba(0,0,0,0.8);
+            border: 2px solid #888; border-radius: 50%; cursor: pointer;
+            display: flex; justify-content: center; align-items: center; font-size: 20px;
+            transition: 0.2s;
+        }
+        #settings-btn:hover { border-color: #fff; transform: rotate(90deg); }
+
+        #shop-btn-container {
+            display: flex; align-items: center; gap: 8px;
+            background: rgba(0,0,0,0.8); padding: 8px 15px; border-radius: 30px;
             border: 2px solid #ffd700; cursor: pointer; transition: 0.2s;
         }
         #shop-btn-container:hover { transform: scale(1.05); box-shadow: 0 0 15px #ffd700; }
-        .shop-icon { font-size: 24px; }
-        .coin-balance { font-size: 18px; color: #ffd700; font-weight: bold; }
+        .shop-icon { font-size: 20px; }
+        .coin-balance { font-size: 16px; color: #ffd700; font-weight: bold; }
 
-        #shop-modal {
+        /* Modals */
+        .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.95); z-index: 100; display: none;
             flex-direction: column; align-items: center; justify-content: center;
         }
-        .shop-content { width: 800px; height: 600px; background: #15151f; border: 2px solid #ffd700; border-radius: 15px; padding: 20px; display: flex; flex-direction: column; }
-        .shop-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        .modal-content { width: 800px; height: 600px; background: #15151f; border: 2px solid #ffd700; border-radius: 15px; padding: 20px; display: flex; flex-direction: column; }
+        .admin-content { width: 400px; height: auto; border-color: #888; padding: 30px; text-align: center; }
+        
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        .btn-close { background: #ff4757; color: white; border: none; padding: 5px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+
         .shop-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; overflow-y: auto; padding-right: 10px; }
         .shop-item { background: #222; border: 1px solid #444; border-radius: 10px; padding: 10px; display: flex; flex-direction: column; align-items: center; gap: 5px; transition: 0.2s; }
         .shop-item:hover { border-color: #ffd700; }
@@ -278,7 +345,6 @@
         .btn-buy { background: #ffd700; color: #000; }
         .btn-equip { background: #00d4ff; color: #000; }
         .btn-equipped { background: #2ecc71; color: #fff; cursor: default; }
-        .btn-close { background: #ff4757; color: white; border: none; padding: 5px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
 
         .sidebar-column { width: 260px; height: 635px; display: flex; flex-direction: column; gap: 15px; }
         .sidebar-box {
@@ -327,13 +393,38 @@
 </head>
 <body class="bg-default">
 
-    <div id="shop-btn-container" onclick="openShop()">
-        <span class="shop-icon">🛒</span>
-        <span class="coin-balance" id="coinDisplay">0</span>
-        <span style="font-size:12px; color:#aaa; margin-left:5px;">KEV COINS</span>
+    <div id="top-left-ui">
+        <div id="settings-btn" onclick="openAdminModal()">⚙️</div>
+        <div id="shop-btn-container" onclick="openShop()">
+            <span class="shop-icon">🛒</span>
+            <span class="coin-balance" id="coinDisplay">0</span>
+            <span style="font-size:10px; color:#aaa; margin-left:3px;">KEV COINS</span>
+        </div>
     </div>
 
-    <div id="shop-modal">
+    <div id="admin-modal" class="modal-overlay">
+        <div class="modal-content admin-content">
+            <div class="shop-header">
+                <h2 style="color:#888; border:none;">ADMINISTRATION</h2>
+                <button class="btn-close" onclick="closeAdminModal()">X</button>
+            </div>
+            
+            <div id="adminLogin">
+                <p style="color:#aaa; margin-bottom:20px;">Entrez le code sécurisé</p>
+                <input type="password" id="adminCodeInput" placeholder="CODE" style="width:100%;">
+                <button class="btn" style="width:100%; font-size:16px;" onclick="checkAdminCode()">VALIDER</button>
+                <p id="adminError" style="color:red; display:none; margin-top:10px;">Code incorrect</p>
+            </div>
+
+            <div id="adminPanel" style="display:none; flex-direction:column; gap:20px; align-items:center;">
+                <p style="color:#2ecc71;">Accès Autorisé</p>
+                <button id="dlBtn" class="btn" style="width:100%; font-size:14px; background:#00d4ff;" onclick="downloadDatabase()">TÉLÉCHARGER LA BDD</button>
+                <p style="font-size:10px; color:#666;">Format JSON (Historique + Scores + Users)</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="shop-modal" class="modal-overlay">
         <div class="shop-content">
             <div class="shop-header">
                 <h2 style="color:#ffd700; font-size:24px; border:none;">BOUTIQUE DE FONDS</h2>
@@ -348,7 +439,7 @@
             <div id="canvas-wrapper">
                 <div id="start-screen" class="overlay">
                     <h1 style="color:#00d4ff; text-shadow:0 0 20px #00d4ff; margin-bottom: 5px;">JEU KEVIN</h1>
-                    <p style="color:#888; font-size: 12px; margin-bottom: 15px;">ULTIMATE V20</p>
+                    <p style="color:#888; font-size: 12px; margin-bottom: 15px;">ULTIMATE V21 ADMIN</p>
                     <p style="color:#ffd700; font-size: 16px; margin-bottom: 30px;">MEILLEUR SCORE : <span id="bestScoreDisplay">0</span></p>
                     <input type="text" id="playerNameInput" placeholder="PSEUDO" maxlength="12">
                     <button class="btn" onclick="startGame()">JOUER</button>
@@ -488,7 +579,6 @@
                     state.inventory = userData.inventory || [];
                     if(userData.equippedBg) {
                         state.equippedBg = userData.equippedBg;
-                        // Appliquer sur le Wrapper
                         document.getElementById('canvas-wrapper').className = userData.equippedBg;
                     }
                     updateCoinDisplay();
@@ -499,12 +589,21 @@
 
         function updateCoinDisplay() { coinDisplay.innerText = state.coins; }
 
-        window.openShop = function() {
+        // ADMIN UI
+        window.openAdminModal = () => document.getElementById('admin-modal').style.display = 'flex';
+        window.closeAdminModal = () => {
+            document.getElementById('admin-modal').style.display = 'none';
+            document.getElementById('adminLogin').style.display = 'block';
+            document.getElementById('adminPanel').style.display = 'none';
+            document.getElementById('adminCodeInput').value = "";
+        };
+
+        window.openShop = () => {
             if(!state.pseudo) { alert("Entre ton pseudo d'abord !"); return; }
             document.getElementById('shop-modal').style.display = 'flex';
             renderShop();
-        }
-        window.closeShop = function() { document.getElementById('shop-modal').style.display = 'none'; }
+        };
+        window.closeShop = () => document.getElementById('shop-modal').style.display = 'none';
 
         function renderShop() {
             const grid = document.getElementById('shopGrid');
@@ -516,7 +615,7 @@
                 if(item.id === 'bg-rsb') { preview.style.display = 'flex'; preview.style.justifyContent='center'; preview.style.alignItems='center'; preview.innerHTML = '<span style="color:#000080; font-weight:bold;">RSB</span>'; }
                 
                 const name = document.createElement('div'); name.className = 'item-name'; name.innerText = item.name;
-                const price = document.createElement('div'); price.className = 'item-price'; price.innerText = item.price + " KC";
+                const price = document.createElement('div'); price.className = 'item-price'; price.innerText = item.price === 0 ? "GRATUIT" : item.price + " KC";
                 const btn = document.createElement('button'); btn.className = 'shop-action-btn';
                 
                 const isOwned = item.price === 0 || state.inventory.includes(item.id);
@@ -622,19 +721,14 @@
         }
 
         function draw() {
-            // Clear complet pour laisser voir le background CSS
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
             const ballColor = getDynamicColor(state.selectedBallColor);
             const paddleColor = getDynamicColor(state.selectedPaddleColor);
-
             particles.forEach(p => { ctx.globalAlpha = p.life; ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill(); });
             ctx.globalAlpha = 1;
-
             ctx.fillStyle = paddleColor; ctx.shadowBlur = state.spacePressed ? 30 : 10; ctx.shadowColor = paddleColor;
             if(state.selectedPaddleColor === '#111') { ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.strokeRect(paddle.x, paddle.y, paddle.width, paddle.height); }
             ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
-
             ctx.fillStyle = ballColor; ctx.shadowColor = ballColor; ctx.shadowBlur = 15;
             ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur = 0;
         }
@@ -668,9 +762,7 @@
         function returnToMenu() {
             document.getElementById('game-over-screen').style.display = 'none';
             document.getElementById('start-screen').style.display = 'flex';
-            initMenu(); 
-            // Clear canvas
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            initMenu(); ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
 
         initMenu();
