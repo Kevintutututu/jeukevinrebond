@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jeu Kevin - Arcade V23 Ultimate</title>
+    <title>Jeu Kevin - Arcade V24 Final</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
     
     <script type="module">
@@ -24,7 +24,7 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // --- SAUVEGARDE & MOYENNE ---
+        // --- SAUVEGARDE ---
         let lastSaveTime = 0;
 
         window.saveGameResults = async (name, points, earnedCoins) => {
@@ -32,70 +32,48 @@
             const now = Date.now();
             if(now - lastSaveTime < 2000) return; 
             lastSaveTime = now;
+
             const cleanName = name.trim().toUpperCase();
 
             try {
                 // 1. Historique
-                await addDoc(collection(db, "history"), { name: cleanName, points: points, date: now });
-
-                // 2. Best Score
-                const bestRef = doc(db, "best_scores", cleanName);
-                getDoc(bestRef).then(snap => {
-                    if (!snap.exists() || points > snap.data().points) {
-                        setDoc(bestRef, { name: cleanName, points: points, date: now }, { merge: true });
-                    }
+                await addDoc(collection(db, "history"), {
+                    name: cleanName,
+                    points: points,
+                    date: now
                 });
 
-                // 3. Stats & Inventaire
-                const userRef = doc(db, "user_stats", cleanName);
+                // 2. Best Score (Unique)
+                const userRef = doc(db, "best_scores", cleanName);
                 const userSnap = await getDoc(userRef);
-                
-                let myRecords = [];
-                let currentInventory = [];
-                let currentEquipped = 'bg-default';
-                if(userSnap.exists()) {
-                    const data = userSnap.data();
-                    myRecords = data.personalRecords || [];
-                    currentInventory = data.inventory || [];
-                    currentEquipped = data.equippedBg || 'bg-default';
+                if (!userSnap.exists() || points > userSnap.data().points) {
+                    await setDoc(userRef, { name: cleanName, points: points, date: now }, { merge: true });
                 }
-                myRecords.push(points);
-                myRecords.sort((a, b) => b - a);
-                myRecords = myRecords.slice(0, 10);
 
-                await setDoc(userRef, { 
+                // 3. Stats Joueur
+                const statsRef = doc(db, "user_stats", cleanName);
+                await setDoc(statsRef, { 
                     name: cleanName,
                     gamesPlayed: increment(1),
-                    coins: increment(earnedCoins),
-                    personalRecords: myRecords,
-                    inventory: currentInventory,
-                    equippedBg: currentEquipped
+                    coins: increment(earnedCoins)
                 }, { merge: true });
-
-                // 4. Moyenne Globale
-                const globalStatsRef = doc(db, "stats", "global");
-                await setDoc(globalStatsRef, {
-                    totalPoints: increment(points),
-                    totalGames: increment(1)
-                }, { merge: true });
-
-                displayPersonalRecords(myRecords);
 
             } catch (e) { console.error("Erreur Save:", e); }
         };
 
-        // --- COIN BAG SYSTEM (CORRIGÉ) ---
-        const BAG_SPAWN_INTERVAL = 45000; // 45 secondes (plus fréquent pour tester)
+        // --- COIN BAG SYSTEM (CORRIGÉ & INDÉPENDANT) ---
+        const BAG_INTERVAL_MS = 45000; // Apparition toutes les 45 sec
         let bagElement = null;
-        let bagTimerInterval;
+        let bagDisappearTimer;
 
-        // Cette fonction se lance une seule fois au démarrage
-        function startCoinBagSystem() {
-            setInterval(spawnCoinBag, BAG_SPAWN_INTERVAL);
+        // Cette fonction se lance UNE SEULE FOIS au chargement de la page
+        function initCoinBagLoop() {
+            console.log("Système de sac de pièces activé.");
+            setInterval(spawnCoinBag, BAG_INTERVAL_MS);
         }
 
         function spawnCoinBag() {
-            if(bagElement) removeCoinBag(); // Nettoyage si déjà présent
+            if(bagElement) removeCoinBag(); // Supprime l'ancien s'il est encore là
 
             bagElement = document.createElement('div');
             bagElement.id = 'coin-bag';
@@ -106,32 +84,31 @@
             timerDisplay.innerText = "20s";
             bagElement.appendChild(timerDisplay);
 
-            // Position aléatoire MAIS en dehors du jeu
-            const safeMargin = 80;
+            // Position aléatoire sécurisée (hors du cadre de jeu si possible)
+            const safeMargin = 100;
             const gameRect = document.getElementById('canvas-wrapper').getBoundingClientRect();
             let x, y;
-            let safetyBreaker = 0;
+            let attempts = 0;
             
-            // On cherche une position valide
             do {
                 x = Math.random() * (window.innerWidth - 80);
                 y = Math.random() * (window.innerHeight - 80);
-                safetyBreaker++;
+                attempts++;
             } while (
-                // Si le sac est DANS le jeu, on recommence
+                // On évite la zone centrale du jeu
                 (x > gameRect.left - safeMargin && x < gameRect.right + safeMargin &&
                 y > gameRect.top - safeMargin && y < gameRect.bottom + safeMargin) &&
-                safetyBreaker < 100
+                attempts < 50
             );
 
             bagElement.style.left = x + 'px';
             bagElement.style.top = y + 'px';
 
-            // Clic = Récompense
+            // Click = Gain
             bagElement.onclick = () => {
                 const reward = Math.floor(Math.random() * 201) + 50; // 50 à 250
                 
-                // Effet visuel
+                // Popup visuelle
                 const feedback = document.createElement('div');
                 feedback.className = 'coin-popup';
                 feedback.style.left = bagElement.style.left;
@@ -140,7 +117,7 @@
                 document.body.appendChild(feedback);
                 setTimeout(() => feedback.remove(), 1000);
 
-                // Ajout argent
+                // Ajout réel
                 state.coins += reward;
                 updateCoinDisplay();
                 if(window.addFreeCoins) window.addFreeCoins(state.pseudo, reward);
@@ -150,50 +127,40 @@
 
             document.body.appendChild(bagElement);
 
-            // Mouvement du sac
-            let vx = (Math.random() - 0.5) * 3;
-            let vy = (Math.random() - 0.5) * 3;
-            
-            function moveBag() {
+            // Mouvement
+            let vx = (Math.random() - 0.5) * 2;
+            let vy = (Math.random() - 0.5) * 2;
+
+            function move() {
                 if(!bagElement) return;
                 let rect = bagElement.getBoundingClientRect();
                 let nextX = rect.left + vx;
                 let nextY = rect.top + vy;
 
-                // Rebond Ecran
                 if(nextX <= 0 || nextX >= window.innerWidth - 60) vx *= -1;
                 if(nextY <= 0 || nextY >= window.innerHeight - 60) vy *= -1;
 
-                // Rebond Jeu (Ne passe jamais dessus)
-                const gameBox = document.getElementById('canvas-wrapper').getBoundingClientRect();
-                if (
-                    nextX < gameBox.right && nextX + 60 > gameBox.left &&
-                    nextY < gameBox.bottom && nextY + 60 > gameBox.top
-                ) {
-                    vx *= -1; vy *= -1; 
-                }
-
                 bagElement.style.left = (rect.left + vx) + 'px';
                 bagElement.style.top = (rect.top + vy) + 'px';
-                requestAnimationFrame(moveBag);
+                requestAnimationFrame(move);
             }
-            requestAnimationFrame(moveBag);
+            requestAnimationFrame(move);
 
-            // Timer de disparition
+            // Compte à rebours 20s
             let timeLeft = 20;
-            bagTimerInterval = setInterval(() => {
+            bagDisappearTimer = setInterval(() => {
                 timeLeft--;
-                timerDisplay.innerText = timeLeft + "s";
+                if(timerDisplay) timerDisplay.innerText = timeLeft + "s";
                 if(timeLeft <= 0) removeCoinBag();
             }, 1000);
         }
 
         function removeCoinBag() {
             if(bagElement) { bagElement.remove(); bagElement = null; }
-            if(bagTimerInterval) clearInterval(bagTimerInterval);
+            if(bagDisappearTimer) clearInterval(bagDisappearTimer);
         }
 
-        // Sauvegarde récompense sac
+        // Sauvegarde du cadeau
         window.addFreeCoins = async (name, amount) => {
             if(!name) return;
             const cleanName = name.trim().toUpperCase();
@@ -204,38 +171,7 @@
             } catch (e) { console.error(e); }
         };
 
-        // --- LECTURE STANDARD ---
-        window.fetchPersonalRecords = async (name) => {
-            const list = document.getElementById('personal-list');
-            if(!list || !name) return;
-            list.innerHTML = "<li style='justify-content:center; color:#888;'><i>Chargement...</i></li>";
-            const cleanName = name.trim().toUpperCase();
-            try {
-                const userRef = doc(db, "user_stats", cleanName);
-                const userSnap = await getDoc(userRef);
-                list.innerHTML = ""; 
-                if (!userSnap.exists() || !userSnap.data().personalRecords) {
-                    list.innerHTML = "<li style='justify-content:center; color:#555;'>Aucun record</li>";
-                    return;
-                }
-                displayPersonalRecords(userSnap.data().personalRecords);
-            } catch (e) { list.innerHTML = "<li style='color:red; font-size:10px'>Erreur connexion</li>"; }
-        };
-
-        function displayPersonalRecords(scores) {
-            const list = document.getElementById('personal-list');
-            if(!list) return; list.innerHTML = "";
-            if(!scores || scores.length === 0) {
-                list.innerHTML = "<li style='justify-content:center; color:#555;'>Aucun record</li>";
-                return;
-            }
-            scores.forEach((s, index) => {
-                const li = document.createElement('li');
-                li.innerHTML = `<span>#${index+1}</span> <span style="color:#00d4ff">${s}</span>`;
-                list.appendChild(li);
-            });
-        }
-
+        // --- LECTURE ---
         window.fetchUserBestScore = async (name) => {
             if(!name) return 0;
             const cleanName = name.trim().toUpperCase();
@@ -245,6 +181,32 @@
                 if (docSnap.exists()) return docSnap.data().points;
             } catch (e) { return 0; }
             return 0;
+        };
+
+        window.fetchPersonalRecords = async (name) => {
+            const list = document.getElementById('personal-list');
+            if(!list || !name) return;
+            list.innerHTML = "<li style='justify-content:center; color:#888;'><i>Chargement...</i></li>";
+            const cleanName = name.trim().toUpperCase();
+            try {
+                // On utilise l'historique filtré
+                const q = query(collection(db, "history"), where("name", "==", cleanName));
+                const snap = await getDocs(q);
+                if(snap.empty) {
+                    list.innerHTML = "<li style='justify-content:center; color:#555;'>Aucun record</li>";
+                    return;
+                }
+                let scores = [];
+                snap.forEach(doc => scores.push(doc.data().points));
+                scores.sort((a, b) => b - a);
+                scores = scores.slice(0, 10);
+                list.innerHTML = "";
+                scores.forEach((s, index) => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `<span>#${index+1}</span> <span style="color:#00d4ff">${s}</span>`;
+                    list.appendChild(li);
+                });
+            } catch (e) { list.innerHTML = "<li style='color:red; font-size:10px'>Erreur connexion</li>"; }
         };
 
         window.fetchUserData = async (name) => {
@@ -281,46 +243,21 @@
             await setDoc(doc(db, "user_stats", cleanName), { equippedBg: bgId }, { merge: true });
         };
 
-        // --- ADMIN ---
-        window.openAdminModal = () => document.getElementById('admin-modal').style.display = 'flex';
-        window.closeAdminModal = () => {
-            document.getElementById('admin-modal').style.display = 'none';
-            document.getElementById('adminLogin').style.display = 'block';
-            document.getElementById('adminPanel').style.display = 'none';
-            document.getElementById('adminCodeInput').value = "";
-        };
-        window.checkAdminCode = () => {
-            if(document.getElementById('adminCodeInput').value === "KC2523COUEDRO") {
-                document.getElementById('adminLogin').style.display = 'none';
-                document.getElementById('adminPanel').style.display = 'flex';
-            } else { document.getElementById('adminError').style.display = 'block'; }
-        };
-        window.downloadDatabase = async () => {
-            const btn = document.getElementById('dlBtn'); btn.innerText = "TÉLÉCHARGEMENT..."; btn.disabled = true;
-            try {
-                const bestScoresSnap = await getDocs(collection(db, "best_scores"));
-                const userStatsSnap = await getDocs(collection(db, "user_stats"));
-                let data = { exportDate: new Date().toISOString(), best_scores: [], user_stats: [] };
-                bestScoresSnap.forEach(doc => data.best_scores.push(doc.data()));
-                userStatsSnap.forEach(doc => data.user_stats.push(doc.data()));
-                const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
-                const a = document.createElement('a'); a.href = url; a.download = `kevin_arcade_lite_backup_${Date.now()}.json`;
-                document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
-                btn.innerText = "SUCCÈS !"; setTimeout(() => { btn.innerText = "TÉLÉCHARGER LA BDD"; btn.disabled = false; }, 2000);
-            } catch (e) { console.error(e); btn.innerText = "ERREUR"; btn.disabled = false; }
-        };
-
-        // --- LISTENERS LIVE ---
-        const qTop = query(collection(db, "best_scores"), orderBy("points", "desc"), limit(10));
+        // --- LISTENERS LIVE (MODIFIÉS POUR TOP JOUEURS ILLIMITÉ) ---
+        
+        // TOP JOUEURS (Sans limite de 10, trié par points)
+        // Attention : Si beaucoup de joueurs, la liste sera longue, le CSS gère le scroll.
+        const qTop = query(collection(db, "best_scores"), orderBy("points", "desc"));
         onSnapshot(qTop, (snapshot) => {
             const list = document.getElementById('score-list');
             if(!list) return; list.innerHTML = "";
             let rank = 1;
             snapshot.forEach((doc) => {
-                const s = doc.data(); const li = document.createElement('li');
+                const s = doc.data();
+                const li = document.createElement('li');
                 let color = rank === 1 ? '#ffd700' : (rank === 2 ? '#c0c0c0' : (rank === 3 ? '#cd7f32' : 'white'));
                 let medal = rank === 1 ? '<span style="margin-right:5px;">👑</span>' : '';
-                li.innerHTML = `<div style="display:flex; align-items:center; gap:5px;"><span style="opacity:0.5; width:20px;">#${rank}</span><span style="color:${color}; font-weight:bold;">${medal}${s.name}</span></div><span style="color:#00d4ff;">${s.points}</span>`;
+                li.innerHTML = `<div style="display:flex; align-items:center; gap:5px;"><span style="opacity:0.5; width:30px;">#${rank}</span><span style="color:${color}; font-weight:bold;">${medal}${s.name}</span></div><span style="color:#00d4ff;">${s.points}</span>`;
                 list.appendChild(li); rank++;
             });
         });
@@ -358,9 +295,6 @@
                 const data = docSnap.data();
                 const avg = data.totalGames > 0 ? Math.round(data.totalPoints / data.totalGames) : 0;
                 if(el) el.innerText = avg;
-            } else {
-                setDoc(globalStatsRef, { totalPoints: 7567, totalGames: 329 });
-                if(el) el.innerText = "23";
             }
         });
 
@@ -432,12 +366,10 @@
         }
         #coin-bag:active { transform: scale(0.9); }
         @keyframes pulseBag { from { box-shadow: 0 0 10px #ffd700; } to { box-shadow: 0 0 30px #ffd700; } }
-        
         .bag-timer {
             position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%);
             background: #000; color: #fff; font-size: 10px; padding: 2px 5px; border-radius: 5px;
         }
-
         .coin-popup {
             position: absolute; color: #ffd700; font-weight: bold; font-size: 24px;
             text-shadow: 0 0 10px #000; pointer-events: none; animation: floatUp 1s forwards; z-index: 10000;
@@ -463,7 +395,10 @@
         .btn-equipped { background: #2ecc71; color: #fff; cursor: default; }
 
         .sidebar-column { width: 260px; height: 635px; display: flex; flex-direction: column; gap: 15px; }
-        .sidebar-box { background: rgba(15, 15, 25, 0.9); border: 1px solid #00d4ff; border-radius: 12px; padding: 15px; display: flex; flex-direction: column; box-shadow: 0 0 20px rgba(0,0,0,0.5); overflow: hidden; }
+        .sidebar-box {
+            background: rgba(15, 15, 25, 0.9); border: 1px solid #00d4ff; border-radius: 12px; padding: 15px;
+            display: flex; flex-direction: column; box-shadow: 0 0 20px rgba(0,0,0,0.5); overflow: hidden;
+        }
         .box-top10 { flex: 3; } .box-recent { flex: 2; border-color: #ff4757; } .box-perso { flex: 3; border-color: #ff6b6b; } .box-active { flex: 2; border-color: #2ecc71; }
         
         h2 { text-align: center; margin-top: 0; font-size: 14px; text-transform: uppercase; border-bottom: 2px solid; padding-bottom: 8px; margin-bottom: 8px; }
@@ -550,7 +485,7 @@
             <div id="canvas-wrapper">
                 <div id="start-screen" class="overlay">
                     <h1 style="color:#00d4ff; text-shadow:0 0 20px #00d4ff; margin-bottom: 5px;">JEU KEVIN</h1>
-                    <p style="color:#888; font-size: 12px; margin-bottom: 15px;">ULTIMATE V23</p>
+                    <p style="color:#888; font-size: 12px; margin-bottom: 15px;">ULTIMATE V24</p>
                     <p style="color:#ffd700; font-size: 16px; margin-bottom: 30px;">MEILLEUR SCORE : <span id="bestScoreDisplay">0</span></p>
                     <input type="text" id="playerNameInput" placeholder="PSEUDO" maxlength="12">
                     <button class="btn" onclick="startGame()">JOUER</button>
@@ -581,7 +516,7 @@
 
         <div class="sidebar-column">
             <div class="sidebar-box box-top10">
-                <h2 class="title-blue">TOP 10 JOUEURS</h2>
+                <h2 class="title-blue">TOP JOUEURS</h2>
                 <ul id="score-list"><li>Chargement...</li></ul>
             </div>
             <div class="sidebar-box box-recent">
@@ -666,8 +601,7 @@
         function initMenu() {
             if(state.pseudo) { nameInput.value = state.pseudo; checkOnlineData(); }
             refreshAllSkins();
-            // Start bag system globally
-            startCoinBagSystem();
+            initCoinBagLoop(); // On lance le système de sac
         }
 
         nameInput.addEventListener('blur', () => {
@@ -678,6 +612,7 @@
         async function checkOnlineData() {
             const name = nameInput.value.trim().toUpperCase();
             if(!name) return;
+            
             if(window.fetchUserBestScore) {
                 const onlineBest = await window.fetchUserBestScore(name);
                 if(onlineBest > state.bestScore) state.bestScore = onlineBest;
@@ -867,35 +802,6 @@
             document.getElementById('start-screen').style.display = 'flex';
             initMenu(); ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
-
-        // --- ADMIN UI FUNCTIONS ---
-        window.openAdminModal = () => document.getElementById('admin-modal').style.display = 'flex';
-        window.closeAdminModal = () => {
-            document.getElementById('admin-modal').style.display = 'none';
-            document.getElementById('adminLogin').style.display = 'block';
-            document.getElementById('adminPanel').style.display = 'none';
-            document.getElementById('adminCodeInput').value = "";
-        };
-        window.checkAdminCode = () => {
-            if(document.getElementById('adminCodeInput').value === "KC2523COUEDRO") {
-                document.getElementById('adminLogin').style.display = 'none';
-                document.getElementById('adminPanel').style.display = 'flex';
-            } else { document.getElementById('adminError').style.display = 'block'; }
-        };
-        window.downloadDatabase = async () => {
-            const btn = document.getElementById('dlBtn'); btn.innerText = "TÉLÉCHARGEMENT..."; btn.disabled = true;
-            try {
-                const bestScoresSnap = await getDocs(collection(db, "best_scores"));
-                const userStatsSnap = await getDocs(collection(db, "user_stats"));
-                let data = { exportDate: new Date().toISOString(), best_scores: [], user_stats: [] };
-                bestScoresSnap.forEach(doc => data.best_scores.push(doc.data()));
-                userStatsSnap.forEach(doc => data.user_stats.push(doc.data()));
-                const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
-                const a = document.createElement('a'); a.href = url; a.download = `kevin_arcade_lite_backup_${Date.now()}.json`;
-                document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
-                btn.innerText = "SUCCÈS !"; setTimeout(() => { btn.innerText = "TÉLÉCHARGER LA BDD"; btn.disabled = false; }, 2000);
-            } catch (e) { console.error(e); btn.innerText = "ERREUR"; btn.disabled = false; }
-        };
 
         initMenu();
         ctx.clearRect(0, 0, canvas.width, canvas.height);
